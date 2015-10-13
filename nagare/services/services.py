@@ -56,7 +56,7 @@ class Services(plugins.Plugins):
         # Get the signature of ``f`` or the signature of its ``__init__`` method if ``f`` is a class
         args = inspect.getargspec(f.__init__ if isinstance(f, type) else f)
 
-        # Services to inject are postfixed by ``__service`` in the signature
+        # Services to inject are postfixed by ``_service`` in the signature
         services = dict(zip(reversed(args.args), reversed(args.defaults or ())))
         services.update({name + '_service': service for name, service in self.items()})
         services['services_service'] = self

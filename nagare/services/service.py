@@ -14,4 +14,12 @@ from .plugin import Plugin
 
 
 class Service(Plugin):
-    pass
+    def __init__(self, conf_filename, error):
+        """Initialization
+
+        In:
+          - ``conf_filename`` -- the path to the configuration file
+          - ``error`` -- the function to call in case of configuration errors
+        """
+        pass
+
