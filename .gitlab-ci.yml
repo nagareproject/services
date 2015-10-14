@@ -1,0 +1,4 @@
+integration:
+  script:
+    - python setup.py test
+
