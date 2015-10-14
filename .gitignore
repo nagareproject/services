@@ -13,5 +13,8 @@ dist
 .settings
 .idea
 .coverage
+.eggs
+*.swp
 htmlcov
 nbproject
+

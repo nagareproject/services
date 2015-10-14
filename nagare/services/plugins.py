@@ -39,12 +39,6 @@ class Plugins(dict):
             # If a configuration is defined, load the plugins
             self.load(conf_filename, error, conf and conf.get('root'))
 
-    def copy(self):
-        new = self.__class__()
-        new.update(self)
-
-        return new
-
     def discover(self):
         """Read the plugins
 
@@ -129,8 +123,6 @@ class Plugins(dict):
                 print "%s<%s> can't be loaded" % (category.capitalize(), name)
                 raise
 
-        return plugins
-
     def items(self):
         """Return the (name, plugin) list
 
@@ -162,3 +154,9 @@ class Plugins(dict):
           - the plugins list sorted on the their ``LOAD_PRIORITY`` attribute
         """
         return [plugin for _, plugin in self.items()]
+
+    def copy(self):
+        new = self.__class__()
+        new.update(self)
+
+        return new
