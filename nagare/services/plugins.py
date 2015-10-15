@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class Plugins(dict):
     ENTRY_POINTS = None  # Section where to read the entry points
-    CONF_SECTION = None  # Parent section of the plugins in the application configuration file
+    CONFIG_SECTION = None  # Parent section of the plugins in the application configuration file
 
     def __init__(self, conf_filename=None, error=None, conf=None, entry_points=None):
         """Eager / lazy loading the plugins
@@ -35,9 +35,18 @@ class Plugins(dict):
         """
         self.entry_points = entry_points or self.ENTRY_POINTS
 
-        if conf_filename:
+        if conf_filename is not None:
             # If a configuration is defined, load the plugins
             self.load(conf_filename, error, conf and conf.get('root'))
+
+    def compare_load_order(self, plugin1, plugin2):
+        """Sort the plugin loading order
+
+        In:
+          - ``plugin1`` -- first plugin to compare
+          - ``plugin2`` -- second plugin to compare
+        """
+        return cmp(plugin1.LOAD_PRIORITY, plugin2.LOAD_PRIORITY)
 
     def discover(self):
         """Read the plugins
@@ -54,7 +63,7 @@ class Plugins(dict):
 
             plugins.append(plugin)
 
-        return sorted(plugins, key=lambda plugin: plugin.LOAD_PRIORITY)
+        return sorted(plugins, self.compare_load_order)
 
     def read_config(self, plugins, conf_filename, error, root):
         """Read and validate all the plugins configurations
@@ -68,6 +77,9 @@ class Plugins(dict):
         Return:
           - ``configobj`` parent section of the plugins configurations
         """
+        if not self.CONFIG_SECTION:
+            return {}
+
         # Merge the configuration specifications of all the plugins
         spec = {plugin.get_entry_name(): plugin.CONFIG_SPEC for plugin in plugins}
         spec = configobj.ConfigObj({self.CONFIG_SECTION: spec, 'root': 'string(default="%s")' % root})
@@ -92,7 +104,16 @@ class Plugins(dict):
         plugin.set_config(conf)
         return plugin  # By default the plugin is the Python class loaded from the entry point
 
-    def load(self, conf_filename, error, root=None):
+    def register(self, name, plugin):
+        """Register a plugin
+
+        In:
+          - ``name`` -- name of the plugin
+          - ``plugin`` -- the plugin
+        """
+        self[name] = plugin
+
+    def load(self, conf_filename=None, error=None, root=None):
         """Activate and register the plugins
 
         In:
@@ -118,10 +139,12 @@ class Plugins(dict):
 
                 plugin_instance = self.activate(plugin, conf_filename, plugin_conf, error)
                 if plugin_instance is not None:
-                    self[name] = plugin_instance
+                    self.register(name, plugin_instance)
             except:
                 print "%s<%s> can't be loaded" % (category.capitalize(), name)
                 raise
+
+        return self
 
     def items(self):
         """Return the (name, plugin) list
