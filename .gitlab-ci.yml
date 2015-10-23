@@ -6,3 +6,6 @@ production:
   type: deploy
   script:
     - python setup.py register sdist upload
+  only:
+    - release
+
