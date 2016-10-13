@@ -24,20 +24,21 @@ class Plugins(dict):
     ENTRY_POINTS = None  # Section where to read the entry points
     CONFIG_SECTION = None  # Parent section of the plugins in the application configuration file
 
-    def __init__(self, conf_filename=None, error=None, conf=None, entry_points=None):
+    def __init__(self, conf_filename=None, error=None, initial_conf=None, entry_points=None):
         """Eager / lazy loading the plugins
 
         In:
           - ``conf_filename`` -- the path to the configuration file
           - ``error`` -- the function to call in case of configuration errors
-          - ``conf`` -- the ``ConfigObj`` object, created from the configuration file
+          - ``initial_conf`` -- if defined, an initial ``ConfigObj`` object that will be
+            merged to the configuration loaded from configuration file
           - ``entry_points`` -- if defined, overloads the ``ENTRY_POINT`` class attribute
         """
         self.entry_points = entry_points or self.ENTRY_POINTS
 
         if conf_filename is not None:
             # If a configuration is defined, load the plugins
-            self.load(conf_filename, error, conf and conf.get('root'))
+            self.load(conf_filename, error, initial_conf)
 
     def compare_load_order(self, plugin1, plugin2):
         """Sort the plugin loading order
@@ -65,14 +66,15 @@ class Plugins(dict):
 
         return sorted(plugins, self.compare_load_order)
 
-    def read_config(self, plugins, conf_filename, error, root):
+    def read_config(self, plugins, conf_filename, error, initial_conf):
         """Read and validate all the plugins configurations
 
         In:
           - ``plugins`` -- the plugins
           - ``conf_filename`` -- the path to the configuration file
           - ``error`` -- the function to call in case of configuration errors
-          - ``root`` -- the filesystem path to the project
+          - ``initial_conf`` -- the initial configuration that will be merged
+            to the configuration file read
 
         Return:
           - ``configobj`` parent section of the plugins configurations
@@ -82,9 +84,13 @@ class Plugins(dict):
 
         # Merge the configuration specifications of all the plugins
         spec = {plugin.get_entry_name(): plugin.CONFIG_SPEC for plugin in plugins}
-        spec = configobj.ConfigObj({self.CONFIG_SECTION: spec, 'root': 'string(default="%s")' % root})
+        spec = configobj.ConfigObj({self.CONFIG_SECTION: spec})
 
         plugins_conf = configobj.ConfigObj(conf_filename, configspec=spec, interpolation='Template')
+
+        if initial_conf:
+            plugins_conf.merge(initial_conf)
+
         config.validate(conf_filename, plugins_conf, error)
 
         return plugins_conf[self.CONFIG_SECTION]
@@ -113,16 +119,17 @@ class Plugins(dict):
         """
         self[name] = plugin
 
-    def load(self, conf_filename=None, error=None, root=None):
+    def load(self, conf_filename=None, error=None, initial_conf=None):
         """Activate and register the plugins
 
         In:
           - ``conf_filename`` -- the path to the configuration file
           - ``error`` -- the function to call in case of configuration errors
-          - ``root`` -- the filesystem path to the project
+          - ``initial_conf`` -- the initial configuration that will be merged
+            to the configuration file read
         """
         plugins = self.discover()
-        plugins_conf = self.read_config(plugins, conf_filename, error, root or '')
+        plugins_conf = self.read_config(plugins, conf_filename, error, initial_conf)
 
         for plugin in plugins:
             category = '%s ' % plugin.CATEGORY if plugin.CATEGORY else ''

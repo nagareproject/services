@@ -32,7 +32,7 @@ def load_service_test1():
     repository = Services()
 
     conf_filename = os.path.join(os.path.dirname(__file__), 'services.cfg')
-    repository.load(conf_filename, sys.stderr.write, '/tmp/test')
+    repository.load(conf_filename, sys.stderr.write, {'root': '/tmp/test'})
     assert len(repository) == 1
 
     ((service1_name, service1),) = repository.items()

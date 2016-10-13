@@ -80,11 +80,11 @@ def read_config_test():
     all_plugins = repository.discover()
 
     conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    conf = repository.read_config(all_plugins, conf_filename, sys.stderr.write, '/tmp/test')
+    conf = repository.read_config(all_plugins, conf_filename, sys.stderr.write, {'root': '/tmp/test'})
 
-    assert len(conf['test_plugin1']) == 2
+    assert len(conf['test_plugin1']) == 3
     assert conf['test_plugin1']['value1'] == 20
-    assert conf['test_plugin1']['value2'] == '/tmp/test/a.txt'
+    assert conf['test_plugin1']['value2'] == '/tmp/test2/a.txt'
 
     assert len(conf['test_plugin2']) == 2
     assert conf['test_plugin2']['value1'] == 10
@@ -99,16 +99,16 @@ def activate_test():
     repository = Plugins()
     all_plugins = repository.discover()
     conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    conf = repository.read_config(all_plugins, conf_filename, sys.stderr.write, '/tmp/test')
+    conf = repository.read_config(all_plugins, conf_filename, sys.stderr.write, {'root': '/tmp/test'})
 
-    assert len(conf['test_plugin1']) == 2
+    assert len(conf['test_plugin1']) == 3
     plugin1 = all_plugins[0]
 
     assert plugin1.get_config() is None
     repository.activate(plugin1, conf_filename, conf['test_plugin1'], sys.stderr.write)
-    assert len(plugin1.get_config()) == 2
+    assert len(plugin1.get_config()) == 3
     assert plugin1.get_config()['value1'] == 20
-    assert plugin1.get_config()['value2'] == '/tmp/test/a.txt'
+    assert plugin1.get_config()['value2'] == '/tmp/test2/a.txt'
 
 
 def load_test1():
@@ -119,14 +119,14 @@ def load_test1():
     repository = Plugins()
 
     conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    repository.load(conf_filename, sys.stderr.write, '/tmp/test')
+    repository.load(conf_filename, sys.stderr.write, {'root': '/tmp/test'})
     assert len(repository) == 2
 
     (plugin1_name, plugin1), (plugin2_name, plugin2) = repository.items()
     assert plugin1_name == 'test_plugin1'
-    assert len(plugin1.get_config()) == 2
+    assert len(plugin1.get_config()) == 3
     assert plugin1.get_config()['value1'] == 20
-    assert plugin1.get_config()['value2'] == '/tmp/test/a.txt'
+    assert plugin1.get_config()['value2'] == '/tmp/test2/a.txt'
 
     assert plugin2_name == 'test_plugin2'
     assert len(plugin2.get_config()) == 2
@@ -144,9 +144,9 @@ def load_test2():
 
     (plugin1_name, plugin1), (plugin2_name, plugin2) = repository.items()
     assert plugin1_name == 'test_plugin1'
-    assert len(plugin1.get_config()) == 2
+    assert len(plugin1.get_config()) == 3
     assert plugin1.get_config()['value1'] == 20
-    assert plugin1.get_config()['value2'] == '/tmp/test/a.txt'
+    assert plugin1.get_config()['value2'] == '/tmp/test2/a.txt'
 
     assert plugin2_name == 'test_plugin2'
     assert len(plugin2.get_config()) == 2
