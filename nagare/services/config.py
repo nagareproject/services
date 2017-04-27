@@ -30,7 +30,7 @@ def _validate(filename, config):
         yield 'file "%s", section "[%s]", parameter "%s": %s' % (filename, ' / '.join(sections), name, error)
 
 
-def validate(filename, config, error):
+def validate(filename, config, error=lambda msg: None):
     """Validate a ``ConfigObj`` object
 
     In:
