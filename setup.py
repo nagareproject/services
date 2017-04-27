@@ -32,20 +32,4 @@ setup(
     namespace_packages=('nagare', 'nagare.services'),
     tests_require=('nose',),
     test_suite='nose.collector',
-
-    entry_points='''
-    [nagare.services.test1]
-    test_plugin = nagare.services.tests.plugins_test:TestPlugin1
-
-    [nagare.services.test2]
-    test_plugin1 = nagare.services.tests.plugins_test:TestPlugin1
-    test_plugin2 = nagare.services.tests.plugins_test:TestPlugin2
-
-    [nagare.services.test3]
-    test_plugin2 = nagare.services.tests.plugins_test:TestPlugin2
-    test_plugin1 = nagare.services.tests.plugins_test:TestPlugin1
-
-    [nagare.services.test4]
-    service1 = nagare.services.tests.services_test:TestService
-    '''
 )

@@ -10,145 +10,164 @@
 
 import os
 import sys
+import unittest
+
+import pkg_resources
+
 from nagare.services import plugins, plugin
 
 
-class TestPlugin1(plugin.Plugin):
+class DummyPlugins(plugins.Plugins):
+    @staticmethod
+    def iter_entry_points(section):
+        egg_path = os.path.join(os.path.dirname(__file__), 'nagare_services.egg')
+        return pkg_resources.WorkingSet([egg_path]).iter_entry_points(section)
+
+
+class DummyPlugin1(plugin.Plugin):
     CONFIG_SPEC = {'value1': 'integer', 'value2': 'string'}
     CATEGORY = 'TEST'
     TEST_VALUE = 42
 
 
-class TestPlugin2(plugin.Plugin):
-    CONFIG_SPEC = {'value1': 'integer(default=10)', 'value2': 'string(default="$root/b.txt")'}
+class DummyPlugin2(plugin.Plugin):
+    CONFIG_SPEC = {
+        'value1': 'integer(default=10)',
+        'value2': 'string(default="$root/b.txt")',
+        'value3': 'string'
+    }
     CATEGORY = 'TEST'
     TEST_VALUE = 43
     LOAD_PRIORITY = 10
 
 
-def discover_plugin_test1():
-    class Plugins(plugins.Plugins):
-        ENTRY_POINTS = 'nagare.services.test1'
+class TestPlugins1(unittest.TestCase):
+    def setUp(self):
+        DummyPlugin1.set_config(None)
+        DummyPlugin2.set_config(None)
 
-    repository = Plugins()
-    all_plugins = repository.discover()
+    def discover_plugin_test1(self):
+        class Plugins(DummyPlugins):
+            ENTRY_POINTS = 'nagare.services.test1'
 
-    assert len(all_plugins) == 1
+        repository = Plugins()
+        all_plugins = repository.discover()
 
-    test_plugin = all_plugins[0]
-    assert test_plugin.get_entry_name() == 'test_plugin'
-    assert test_plugin.get_project_name() == 'nagare-services'
-    assert test_plugin.get_config() is None
+        self.assertEqual(len(all_plugins), 1)
 
-    assert test_plugin.CATEGORY == 'TEST'
-    assert test_plugin.TEST_VALUE == 42
+        test_plugin = all_plugins[0]
+        self.assertEqual(test_plugin.get_entry_name(), 'test_plugin')
+        self.assertEqual(test_plugin.get_project_name(), 'nagare-services')
+        self.assertIsNone(test_plugin.get_config())
 
+        self.assertEqual(test_plugin.CATEGORY, 'TEST')
+        self.assertEqual(test_plugin.TEST_VALUE, 42)
 
-def discover_plugin_test2():
-    repository = plugins.Plugins(entry_points='nagare.services.test1')
-    all_plugins = repository.discover()
+    def discover_plugin_test2(self):
+        repository = DummyPlugins(entry_points='nagare.services.test1')
+        all_plugins = repository.discover()
 
-    assert len(all_plugins) == 1
+        self.assertEqual(len(all_plugins), 1)
 
-    test_plugin = all_plugins[0]
-    assert test_plugin.get_entry_name() == 'test_plugin'
-    assert test_plugin.get_project_name() == 'nagare-services'
-    assert test_plugin.get_config() is None
+        test_plugin = all_plugins[0]
+        self.assertEqual(test_plugin.get_entry_name(), 'test_plugin')
+        self.assertEqual(test_plugin.get_project_name(), 'nagare-services')
+        self.assertIsNone(test_plugin.get_config())
 
-    assert test_plugin.CATEGORY == 'TEST'
-    assert test_plugin.TEST_VALUE == 42
+        self.assertEqual(test_plugin.CATEGORY, 'TEST')
+        self.assertEqual(test_plugin.TEST_VALUE, 42)
 
+    def load_priority_test(self):
+        repository = DummyPlugins(entry_points='nagare.services.test2')
+        all_plugins = repository.discover()
 
-def load_priority_test():
-    repository = plugins.Plugins(entry_points='nagare.services.test2')
-    all_plugins = repository.discover()
+        self.assertEqual([plugin.get_entry_name() for plugin in all_plugins], ['test_plugin1', 'test_plugin2'])
 
-    assert [plugin.get_entry_name() for plugin in all_plugins] == ['test_plugin1', 'test_plugin2']
+        repository = DummyPlugins(entry_points='nagare.services.test3')
+        all_plugins = repository.discover()
 
-    repository = plugins.Plugins(entry_points='nagare.services.test3')
-    all_plugins = repository.discover()
+        self.assertEqual([plugin.get_entry_name() for plugin in all_plugins], ['test_plugin1', 'test_plugin2'])
 
-    assert [plugin.get_entry_name() for plugin in all_plugins] == ['test_plugin1', 'test_plugin2']
+    def read_config_test(self):
+        class Plugins(DummyPlugins):
+            ENTRY_POINTS = 'nagare.services.test2'
+            CONFIG_SECTION = 'my_plugins'
 
+        repository = Plugins()
+        all_plugins = repository.discover()
 
-def read_config_test():
-    class Plugins(plugins.Plugins):
-        ENTRY_POINTS = 'nagare.services.test2'
-        CONFIG_SECTION = 'my_plugins'
+        conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
+        conf = repository.read_config(all_plugins, conf_filename, sys.stderr.write, root='/tmp/test', greeting='Hello')
 
-    repository = Plugins()
-    all_plugins = repository.discover()
+        self.assertEqual(len(conf['test_plugin1']), 2)
+        self.assertEqual(conf['test_plugin1']['value1'], 20)
+        self.assertEqual(conf['test_plugin1']['value2'], '/tmp/test/a.txt')
 
-    conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    conf = repository.read_config(all_plugins, conf_filename, sys.stderr.write, '/tmp/test')
+        self.assertEqual(len(conf['test_plugin2']), 3)
+        self.assertEqual(conf['test_plugin2']['value1'], 10)
+        self.assertEqual(conf['test_plugin2']['value2'], '/tmp/test/b.txt')
+        self.assertEqual(conf['test_plugin2']['value3'], 'Hello world!')
 
-    assert len(conf['test_plugin1']) == 2
-    assert conf['test_plugin1']['value1'] == 20
-    assert conf['test_plugin1']['value2'] == '/tmp/test/a.txt'
+    def activate_test(self):
+        class Plugins(DummyPlugins):
+            ENTRY_POINTS = 'nagare.services.test2'
+            CONFIG_SECTION = 'my_plugins'
 
-    assert len(conf['test_plugin2']) == 2
-    assert conf['test_plugin2']['value1'] == 10
-    assert conf['test_plugin2']['value2'] == '/tmp/test/b.txt'
+        repository = Plugins()
+        all_plugins = repository.discover()
+        conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
+        conf = repository.read_config(all_plugins, conf_filename, sys.stderr.write, root='/tmp/test', greeting='Hello')
 
+        self.assertEqual(len(conf['test_plugin1']), 2)
+        plugin1 = all_plugins[0]
 
-def activate_test():
-    class Plugins(plugins.Plugins):
-        ENTRY_POINTS = 'nagare.services.test2'
-        CONFIG_SECTION = 'my_plugins'
+        self.assertIsNone(plugin1.get_config())
+        repository.activate(plugin1, conf_filename, conf['test_plugin1'], sys.stderr.write)
+        self.assertEqual(len(plugin1.get_config()), 2)
+        self.assertEqual(plugin1.get_config()['value1'], 20)
+        self.assertEqual(plugin1.get_config()['value2'], '/tmp/test/a.txt')
 
-    repository = Plugins()
-    all_plugins = repository.discover()
-    conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    conf = repository.read_config(all_plugins, conf_filename, sys.stderr.write, '/tmp/test')
+    def load_test1(self):
+        class Plugins(DummyPlugins):
+            ENTRY_POINTS = 'nagare.services.test2'
+            CONFIG_SECTION = 'my_plugins'
 
-    assert len(conf['test_plugin1']) == 2
-    plugin1 = all_plugins[0]
+        repository = Plugins()
 
-    assert plugin1.get_config() is None
-    repository.activate(plugin1, conf_filename, conf['test_plugin1'], sys.stderr.write)
-    assert len(plugin1.get_config()) == 2
-    assert plugin1.get_config()['value1'] == 20
-    assert plugin1.get_config()['value2'] == '/tmp/test/a.txt'
+        conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
+        repository.load(conf_filename, sys.stderr.write, root='/tmp/test', greeting='Hello')
+        self.assertEqual(len(repository), 2)
 
+        (plugin1_name, plugin1), (plugin2_name, plugin2) = repository.items()
+        self.assertEqual(plugin1_name, 'test_plugin1')
+        self.assertEqual(len(plugin1.get_config()), 2)
+        self.assertEqual(plugin1.get_config()['value1'], 20)
+        self.assertEqual(plugin1.get_config()['value2'], '/tmp/test/a.txt')
 
-def load_test1():
-    class Plugins(plugins.Plugins):
-        ENTRY_POINTS = 'nagare.services.test2'
-        CONFIG_SECTION = 'my_plugins'
+        self.assertEqual(plugin2_name, 'test_plugin2')
+        self.assertEqual(len(plugin2.get_config()), 3)
+        self.assertEqual(plugin2.get_config()['value1'], 10)
+        self.assertEqual(plugin2.get_config()['value2'], '/tmp/test/b.txt')
+        self.assertEqual(plugin2.get_config()['value3'], 'Hello world!')
 
-    repository = Plugins()
+    def load_test2(self):
+        class Plugins(DummyPlugins):
+            CONFIG_SECTION = 'my_plugins'
 
-    conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    repository.load(conf_filename, sys.stderr.write, '/tmp/test')
-    assert len(repository) == 2
+        conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
+        repository = Plugins(conf_filename, sys.stderr.write, 'nagare.services.test2', root='/tmp/test', greeting='Hello')
+        self.assertEqual(len(repository), 2)
 
-    (plugin1_name, plugin1), (plugin2_name, plugin2) = repository.items()
-    assert plugin1_name == 'test_plugin1'
-    assert len(plugin1.get_config()) == 2
-    assert plugin1.get_config()['value1'] == 20
-    assert plugin1.get_config()['value2'] == '/tmp/test/a.txt'
+        (plugin1_name, plugin1), (plugin2_name, plugin2) = repository.items()
 
-    assert plugin2_name == 'test_plugin2'
-    assert len(plugin2.get_config()) == 2
-    assert plugin2.get_config()['value1'] == 10
-    assert plugin2.get_config()['value2'] == '/tmp/test/b.txt'
+        self.assertEqual(plugin1_name, 'test_plugin1')
+        self.assertEqual(len(plugin1.get_config()), 2)
+        self.assertEqual(plugin1.get_config()['value1'], 20)
+        self.assertEqual(plugin1.get_config()['value2'], '/tmp/test/a.txt')
 
+        self.assertEqual(plugin2_name, 'test_plugin2')
+        self.assertEqual(len(plugin2.get_config()), 3)
+        self.assertEqual(plugin2.get_config()['value1'], 10)
+        self.assertEqual(plugin2.get_config()['value2'], '/tmp/test/b.txt')
+        self.assertEqual(plugin2.get_config()['value3'], 'Hello world!')
 
-def load_test2():
-    class Plugins(plugins.Plugins):
-        CONFIG_SECTION = 'my_plugins'
-
-    conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    repository = Plugins(conf_filename, sys.stderr.write, {'root': '/tmp/test'}, 'nagare.services.test2')
-    assert len(repository) == 2
-
-    (plugin1_name, plugin1), (plugin2_name, plugin2) = repository.items()
-    assert plugin1_name == 'test_plugin1'
-    assert len(plugin1.get_config()) == 2
-    assert plugin1.get_config()['value1'] == 20
-    assert plugin1.get_config()['value2'] == '/tmp/test/a.txt'
-
-    assert plugin2_name == 'test_plugin2'
-    assert len(plugin2.get_config()) == 2
-    assert plugin2.get_config()['value1'] == 10
-    assert plugin2.get_config()['value2'] == '/tmp/test/b.txt'
