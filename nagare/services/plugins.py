@@ -9,35 +9,30 @@
 
 """Plugins registry"""
 
-import logging
-
 import configobj
 import pkg_resources
 
 from . import config
 
 
-logger = logging.getLogger(__name__)
-
-
 class Plugins(dict):
     ENTRY_POINTS = None  # Section where to read the entry points
     CONFIG_SECTION = None  # Parent section of the plugins in the application configuration file
 
-    def __init__(self, conf_filename=None, error=None, conf=None, entry_points=None):
+    def __init__(self, conf_filename=None, error=None, entry_points=None, **initial_conf):
         """Eager / lazy loading the plugins
 
         In:
           - ``conf_filename`` -- the path to the configuration file
           - ``error`` -- the function to call in case of configuration errors
-          - ``conf`` -- the ``ConfigObj`` object, created from the configuration file
           - ``entry_points`` -- if defined, overloads the ``ENTRY_POINT`` class attribute
+          - ``initial_conf`` -- other configuration parameters not read from the configuration file          
         """
         self.entry_points = entry_points or self.ENTRY_POINTS
 
         if conf_filename is not None:
             # If a configuration is defined, load the plugins
-            self.load(conf_filename, error, conf and conf.get('root'))
+            self.load(conf_filename, error, **initial_conf)
 
     def compare_load_order(self, plugin1, plugin2):
         """Sort the plugin loading order
@@ -48,15 +43,30 @@ class Plugins(dict):
         """
         return cmp(plugin1.LOAD_PRIORITY, plugin2.LOAD_PRIORITY)
 
+    @staticmethod
+    def iter_entry_points(section):
+        """Read the entry points
+
+        In:
+          - ``section`` -- name of the entry points section
+
+        Return:
+          - the entry points
+        """
+        return pkg_resources.iter_entry_points(section)
+
     def discover(self):
         """Read the plugins
+
+        In:
+          - ``get_entry_points`` -- function to call to retrieve all the entrypoints from the given section
 
         Return:
           - the plugins list sorted on their ``LOAD_PRIORITY`` attribute
         """
         plugins = []
 
-        for entry in pkg_resources.iter_entry_points(self.entry_points):
+        for entry in self.iter_entry_points(self.entry_points):
             plugin = entry.load()
             plugin.set_entry_name(entry.name)
             plugin.set_project_name(entry.dist.project_name)
@@ -65,14 +75,14 @@ class Plugins(dict):
 
         return sorted(plugins, self.compare_load_order)
 
-    def read_config(self, plugins, conf_filename, error, root):
+    def read_config(self, plugins, conf_filename, error, **initial_conf):
         """Read and validate all the plugins configurations
 
         In:
           - ``plugins`` -- the plugins
           - ``conf_filename`` -- the path to the configuration file
           - ``error`` -- the function to call in case of configuration errors
-          - ``root`` -- the filesystem path to the project
+          - ``initial_conf`` -- other configuration parameters not read from the configuration file
 
         Return:
           - ``configobj`` parent section of the plugins configurations
@@ -82,9 +92,10 @@ class Plugins(dict):
 
         # Merge the configuration specifications of all the plugins
         spec = {plugin.get_entry_name(): plugin.CONFIG_SPEC for plugin in plugins}
-        spec = configobj.ConfigObj({self.CONFIG_SECTION: spec, 'root': 'string(default="%s")' % root})
+        spec = configobj.ConfigObj({self.CONFIG_SECTION: spec})  # , 'root': 'string(default="%s")' % root})
 
         plugins_conf = configobj.ConfigObj(conf_filename, configspec=spec, interpolation='Template')
+        plugins_conf.merge(initial_conf)
         config.validate(conf_filename, plugins_conf, error)
 
         return plugins_conf[self.CONFIG_SECTION]
@@ -113,16 +124,16 @@ class Plugins(dict):
         """
         self[name] = plugin
 
-    def load(self, conf_filename=None, error=None, root=None):
+    def load(self, conf_filename=None, error=None, **initial_config):
         """Activate and register the plugins
 
         In:
           - ``conf_filename`` -- the path to the configuration file
           - ``error`` -- the function to call in case of configuration errors
-          - ``root`` -- the filesystem path to the project
+          - ``initial_conf`` -- other configuration parameters not read from the configuration file
         """
         plugins = self.discover()
-        plugins_conf = self.read_config(plugins, conf_filename, error, root or '')
+        plugins_conf = self.read_config(plugins, conf_filename, error, **initial_config)
 
         for plugin in plugins:
             category = '%s ' % plugin.CATEGORY if plugin.CATEGORY else ''
@@ -179,7 +190,4 @@ class Plugins(dict):
         return [plugin for _, plugin in self.items()]
 
     def copy(self):
-        new = self.__class__()
-        new.update(self)
-
-        return new
+        return self.__class__(self)

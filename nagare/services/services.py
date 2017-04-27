@@ -21,16 +21,17 @@ class Services(dependencies.Dependencies, plugins.Plugins):
     ENTRY_POINTS = 'services'  # Default section of the service entry points
     CONFIG_SECTION = 'services'  # Default configuration section of the services
 
-    def __init__(self, conf_filename=None, error=None, entry_points=None):
+    def __init__(self, conf_filename=None, error=None, entry_points=None, **initial_conf):
         """Eager / lazy loading the services
 
         In:
           - ``conf_filename`` -- the path to the configuration file
           - ``error`` -- the function to call in case of configuration errors
           - ``entry_points`` -- if defined, overloads the ``ENTRY_POINT`` class attribute
+          - ``initial_conf`` -- other configuration parameters not read from the configuration file          
         """
         dependencies.Dependencies.__init__(self, 'service')
-        plugins.Plugins.__init__(self, conf_filename, error, entry_points)
+        plugins.Plugins.__init__(self, conf_filename, error, entry_points, **initial_conf)
 
     def get_dependency(self, name, **kw):
         try:
