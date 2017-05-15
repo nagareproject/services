@@ -1,6 +1,7 @@
 integration:
   script:
-    - nosetests nagare/services/tests/dependencies_test.py
+    - pip install nose
+    - setests nagare/services/tests/dependencies_test.py nagare/services/tests/plugins_test.py
 
 production:
   type: deploy
