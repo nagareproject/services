@@ -42,6 +42,30 @@ class TestDependenciesInjection(unittest.TestCase):
 
         self.assertEqual(dependencies(f3, 10, 22, c_inject=2, d=10), 44)
 
+    def dependencies_injection_with_decorator_test(self):
+        dependencies1 = Dependencies(c=42, other=10)
+        dependencies2 = Dependencies(c=43)
+
+        @dependencies1.inject
+        def f1(a, b, c):
+            return a + b + c
+
+        self.assertEqual(f1(10, 22, c=10), 42)
+
+        @dependencies1.inject
+        def f2(a, b, c_inject):
+            return a + b + c_inject
+
+        self.assertEqual(f2(10, 22), 74)
+
+        @dependencies2.inject
+        def f3(a, b, c_inject, d):
+            return a + b + c_inject + d
+
+        self.assertEqual(f3(10, 22, d=10), 85)
+
+        self.assertEqual(f3(10, 22, c_inject=2, d=10), 44)
+
     def dependencies_injection_to_object_test(self):
         dependencies = Dependencies(c=42)
 

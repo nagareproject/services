@@ -1,6 +1,6 @@
 integration:
   script:
-    - true # python setup.py test
+    - nosetests nagare/services/tests/dependencies_test.py
 
 production:
   type: deploy

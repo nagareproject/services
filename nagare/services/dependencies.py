@@ -8,9 +8,10 @@
 # approval from Net-ng is strictly forbidden.
 # =-
 
-"""Dependencies registry and injection"""
+"""Dependencies registration and injection"""
 
 import inspect
+import functools
 
 
 class MissingDependency(Exception):
@@ -18,20 +19,31 @@ class MissingDependency(Exception):
 
 
 class Dependencies(dict):
-    def __init__(self, dependencies_postfix='inject', **kw):
+    """Dependencies registry"""
+
+    def __init__(self, dependencies_postfix='inject', **dependencies):
         """Initialization
         
         Dependencies to inject are postfixed by ``'_' + dependencies_postfix``
         in the signature of the functions to call
         """
-        super(Dependencies, self).__init__(**kw)
+        super(Dependencies, self).__init__(**dependencies)
 
         self.postfix = '_' + dependencies_postfix
 
-    def get_dependency(self, name, **kw):
-        name = name[:-len(self.postfix)]
+    def get_dependency(self, name, **other_dependencies):
+        """Retrieve a dependency from this registry
+        
+        In:
+          - ``name`` -- name of the dependency to inject (with the postfix)
+          - ``other_dependencies`` -- optional other dependencies to lookup
+          
+        Returns:
+          - the dependency found
+        """
+        name = name[:-len(self.postfix)]  # strip the postfix
 
-        return self.get(name) or kw[name]
+        return self.get(name) or other_dependencies[name]
 
     def __call__(self, f, *args, **kw):
         """Call ``f`` with dependencies injection
@@ -40,6 +52,9 @@ class Dependencies(dict):
           - ``f`` -- a callable
           - ``args`` -- arguments to pass to ``f``
           - ``kw`` -- keywords to pass to ``f``
+          
+        Return:
+          - value returns by ``f``
         """
         # Get the signature of ``f`` or the signature of its ``__init__`` method if ``f`` is a class
         f2 = f
@@ -64,6 +79,8 @@ class Dependencies(dict):
 
         In:
           - ``f`` -- a callable
-         
+
+        Return:
+          - value returns by ``f``
         """
-        return lambda *args, **kw: self(f, *args, **kw)
+        return functools.update_wrapper(lambda *args, **kw: self(f, *args, **kw), f)
