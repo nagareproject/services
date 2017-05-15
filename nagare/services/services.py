@@ -21,37 +21,72 @@ class Services(dependencies.Dependencies, plugins.Plugins):
     ENTRY_POINTS = 'services'  # Default section of the service entry points
     CONFIG_SECTION = 'services'  # Default configuration section of the services
 
-    def __init__(self, conf_filename=None, error=None, entry_points=None, **initial_conf):
-        """Eager / lazy loading the services
+    activated = True
+
+    def __init__(
+            self,
+            config=None, config_section=None,
+            entry_points=None,
+            config_filename=None,
+            activate_by_default=True,
+            **initial_conf
+    ):
+        """Eager / lazy loading of the services
 
         In:
-          - ``conf_filename`` -- the path to the configuration file
-          - ``error`` -- the function to call in case of configuration errors
+          - ``config`` -- ``ConfigObj`` configuration object
+          - ``config_section`` -- if defined, overloads the ``CONFIG_SECTION`` class attribute
           - ``entry_points`` -- if defined, overloads the ``ENTRY_POINT`` class attribute
-          - ``initial_conf`` -- other configuration parameters not read from the configuration file          
+          - ``config_filename`` -- path of the configuration file
+          - ``activate_by_default`` -- default value if a service has no explicit ``activated`` configuration value 
+          - ``initial_config`` -- other configuration parameters not read from the configuration file
         """
+        self.activate_by_default = activate_by_default
+
         dependencies.Dependencies.__init__(self, 'service')
-        plugins.Plugins.__init__(self, conf_filename, error, entry_points, **initial_conf)
+        plugins.Plugins.__init__(self, config, config_section, entry_points, config_filename, **initial_conf)
+
+    def get_plugin_spec(self, service):
+        """Get the Service configuration specification
+
+        In:
+          - ``service`` -- the service
+
+        Returns:
+          - the service configuration specification
+        """
+        spec = super(Services, self).get_plugin_spec(service)
+
+        return dict(spec, activated='boolean(default="%s")' % self.activate_by_default)
 
     def get_dependency(self, name, **kw):
+        """Retrieve a service from this registry
+
+        In:
+          - ``name`` -- name of the service to inject (with the ``_service`` postfix)
+          - ``other_dependencies`` -- optional other services to lookup
+
+        Returns:
+          - the service found
+        """
         try:
-            return super(Services, self).get_dependency(name, services=self, **kw)
+            # Also inject the ``services_service`` dependency
+            dependency = super(Services, self).get_dependency(name, services=self, **kw)
         except dependencies.MissingDependency as e:
             raise MissingService(e.args[0])
 
-    def activate(self, plugin, conf_filename, conf, error):
-        """Activate the service with its configuration
+        if not dependency.activated:
+            raise MissingService(name)
+
+        return dependency
+
+    def _load_plugin(self, service, *args, **kw):
+        """Load and activate a service
 
         In:
-          - ``plugin`` -- the plugin to activate (the class loaded from the entry point)
-          - ``conf_filename`` -- the path to the configuration file
-          - ``conf`` -- the ``configobj`` configuration
-          - ``error`` -- the function to call in case of configuration errors
+          - ``service`` -- the service
 
-        Return:
-          - the activated service
+        Returns:
+          - the service
         """
-        factory = super(Services, self).activate(plugin, conf_filename, conf, error)
-
-        # Instanciate a singleton service (with services injection)
-        return self(factory, conf_filename, error, **conf)
+        return self(service.load_plugin, *args, **kw)
