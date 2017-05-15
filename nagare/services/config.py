@@ -14,12 +14,16 @@ import configobj
 from validate import Validator
 
 
-def _validate(filename, config):
+class BadConfiguration(Exception):
+    pass
+
+
+def _validate(config, filename=None):
     """Validate a ``ConfigObj`` object
 
     In:
-      - ``filename`` -- the path to the configuration file
       - ``config`` -- the ``ConfigObj`` object, created from the configuration file
+      - ``filename`` -- the path to the configuration file
 
     Return:
       - yield the error messages
@@ -27,23 +31,20 @@ def _validate(filename, config):
     errors = configobj.flatten_errors(config, config.validate(Validator(), preserve_errors=True))
 
     for sections, name, error in errors:
-        yield 'file "%s", section "[%s]", parameter "%s": %s' % (filename, ' / '.join(sections), name, error)
+        yield 'file "%s", section "[%s]", parameter "%s": %s' % (
+            filename or '<undefined>',
+            ' / '.join(sections),
+            name, error
+        )
 
 
-def validate(filename, config, error=lambda msg: None):
+def validate(config, filename=None):
     """Validate a ``ConfigObj`` object
 
     In:
-      - ``filename`` -- the path to the configuration file
       - ``config`` -- the ``ConfigObj`` object, created from the configuration file
-      - ``error`` -- the function to call in case of configuration errors
-
-    Return:
-      - is the configuration valid?
+      - ``filename`` -- the path to the configuration file
     """
-    errors = list(_validate(filename, config))
+    errors = list(_validate(config, filename))
     if errors:
-        error('\n'.join(errors))
-        return False
-
-    return True
+        raise BadConfiguration('\n'.join(errors))

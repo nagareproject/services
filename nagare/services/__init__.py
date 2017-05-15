@@ -8,6 +8,8 @@
 # approval from Net-ng is strictly forbidden.
 # =-
 
+from .config import BadConfiguration
+
 try:
     import pkg_resources
 
