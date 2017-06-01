@@ -1,12 +1,12 @@
 # Encoding: utf-8
 
-# =-
+# --
 # (C)opyright Net-ng 2012-2017
 #
-# This is a Net-ng source code.
-# Any reproduction modification or use without prior written
-# approval from Net-ng is strictly forbidden.
-# =-
+# This software is licensed under the BSD License, as described in
+# the file LICENSE.txt, which you should have received as part of
+# this distribution.
+# --
 
 import os
 import unittest
