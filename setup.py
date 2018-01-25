@@ -1,35 +1,37 @@
 # Encoding: utf-8
 
 # --
-# (C)opyright Net-ng 2012-2017
+# Copyright (c) 2008-2018 Net-ng.
+# All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
 # the file LICENSE.txt, which you should have received as part of
 # this distribution.
 # --
 
-import os
+from os import path
 
 from setuptools import setup, find_packages
 
 
-with open(os.path.join(os.path.dirname(__file__), 'VERSION')) as version:
-    VERSION = version.readline().rstrip()
+here = path.normpath(path.dirname(__file__))
 
+with open(path.join(here, 'README.rst')) as long_description:
+    LONG_DESCRIPTION = long_description.read()
 
 setup(
     name='nagare-services',
-    version=VERSION,
     author='Net-ng',
     author_email='alain.poirier@net-ng.com',
-    description='Loadable plugins and services injection',
-    license='proprietary',
+    description='Dependency and services injection',
+    long_description=LONG_DESCRIPTION,
+    license='BSD',
     keywords='',
-    url='',
-    packages=find_packages(),
+    url='https://github.com/nagareproject/services',
+    packages=find_packages(exclude=['tests']),
     zip_safe=False,
-    install_requires=('configobj',),
-    namespace_packages=('nagare', 'nagare.services'),
-    tests_require=('nose',),
-    test_suite='nose.collector',
+    setup_requires=['setuptools_scm', 'pytest-runner'],
+    use_scm_version=True,
+    install_requires=['configobj'],
+    tests_require=['pytest']
 )

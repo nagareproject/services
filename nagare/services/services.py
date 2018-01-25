@@ -1,7 +1,8 @@
 # Encoding: utf-8
 
 # --
-# (C)opyright Net-ng 2012-2017
+# Copyright (c) 2008-2018 Net-ng.
+# All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
 # the file LICENSE.txt, which you should have received as part of
@@ -10,26 +11,19 @@
 
 """Services registry"""
 
-from . import dependencies, plugins
-
-
-class MissingService(Exception):
-    pass
+from . import exceptions, dependencies, plugins
 
 
 class Services(dependencies.Dependencies, plugins.Plugins):
     ENTRY_POINTS = 'services'  # Default section of the service entry points
     CONFIG_SECTION = 'services'  # Default configuration section of the services
 
-    activated = True
-
     def __init__(
             self,
             config=None, config_section=None,
             entry_points=None,
-            config_filename=None,
-            activate_by_default=True,
-            **initial_conf
+            activated_by_default=True,
+            **initial_config
     ):
         """Eager / lazy loading of the services
 
@@ -37,29 +31,13 @@ class Services(dependencies.Dependencies, plugins.Plugins):
           - ``config`` -- ``ConfigObj`` configuration object
           - ``config_section`` -- if defined, overloads the ``CONFIG_SECTION`` class attribute
           - ``entry_points`` -- if defined, overloads the ``ENTRY_POINT`` class attribute
-          - ``config_filename`` -- path of the configuration file
-          - ``activate_by_default`` -- default value if a service has no explicit ``activated`` configuration value 
+          - ``activate_by_default`` -- default value if a service has no explicit ``activated`` configuration value
           - ``initial_config`` -- other configuration parameters not read from the configuration file
         """
-        self.activate_by_default = activate_by_default
-
         dependencies.Dependencies.__init__(self, 'service')
-        plugins.Plugins.__init__(self, config, config_section, entry_points, config_filename, **initial_conf)
+        plugins.Plugins.__init__(self, config, config_section, entry_points, activated_by_default, **initial_config)
 
-    def get_plugin_spec(self, service):
-        """Get the Service configuration specification
-
-        In:
-          - ``service`` -- the service
-
-        Returns:
-          - the service configuration specification
-        """
-        spec = super(Services, self).get_plugin_spec(service)
-
-        return dict(spec, activated='boolean(default="%s")' % self.activate_by_default)
-
-    def get_dependency(self, name, **kw):
+    def get_dependency(self, name, has_default_value, **kw):
         """Retrieve a service from this registry
 
         In:
@@ -71,16 +49,13 @@ class Services(dependencies.Dependencies, plugins.Plugins):
         """
         try:
             # Also inject the ``services_service`` dependency
-            dependency = super(Services, self).get_dependency(name, services=self, **kw)
-        except dependencies.MissingDependency as e:
-            raise MissingService(e.args[0])
+            name, dependency = super(Services, self).get_dependency(name, has_default_value, services=self, **kw)
+        except exceptions.MissingDependency as e:
+            raise exceptions.MissingService(e.args[0])
 
-        if not dependency.activated:
-            raise MissingService(name)
+        return name, dependency
 
-        return dependency
-
-    def _load_plugin(self, service, *args, **kw):
+    def _load_plugin(self, name, dist, service, config, *args, **kw):
         """Load and activate a service
 
         In:
@@ -89,4 +64,7 @@ class Services(dependencies.Dependencies, plugins.Plugins):
         Returns:
           - the service
         """
-        return self(service.load_plugin, *args, **kw)
+        return self(service, name, dist, *args, **dict(config, **kw))
+
+    def display(self, title='Services', criterias=lambda _: True):
+        super(Services, self).display(title, criterias)

@@ -1,14 +1,7 @@
-integration:
-  script:
-    - pip install nose
-    - python setup.py test
+image: docker-registry.net-ng.com/nagare/stackless:2.7.14
 
-production:
-  type: deploy
+tests:
   script:
-    - python setup.py sdist
-    - pip install twine
-    - twine upload dist/*
-  only:
-    - release
-
+    - /opt/stackless/bin/pip install flake8
+    - /opt/stackless/bin/flake8 nagare
+    - /opt/stackless/bin/python setup.py test

@@ -1,7 +1,8 @@
 # Encoding: utf-8
 
 # --
-# (C)opyright Net-ng 2012-2017
+# Copyright (c) 2008-2018 Net-ng.
+# All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
 # the file LICENSE.txt, which you should have received as part of

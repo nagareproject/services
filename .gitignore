@@ -17,6 +17,3 @@ dist
 *.swp
 build
 dist
-htmlcov
-nbproject
-

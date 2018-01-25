@@ -9,6 +9,14 @@
 # this distribution.
 # --
 
-from pkgutil import extend_path
 
-__path__ = extend_path(__path__, __name__)
+class BadConfiguration(Exception):
+    """Invalid configuration"""
+
+
+class MissingDependency(Exception):
+    """Missing dependency to inject"""
+
+
+class MissingService(Exception):
+    """Missing service to inject"""
