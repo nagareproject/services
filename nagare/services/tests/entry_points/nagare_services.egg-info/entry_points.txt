@@ -1,0 +1,36 @@
+[nagare.plugins.test1]
+test1 = nagare.services.tests.plugins_test:DummyPlugin1
+test2 = nagare.services.tests.plugins_test:DummyPlugin2
+
+[nagare.plugins.test2]
+test2 = nagare.services.tests.plugins_test:DummyPlugin2
+test1 = nagare.services.tests.plugins_test:DummyPlugin1
+
+[nagare.plugins.test3]
+authentication = nagare.services.tests.plugins_test:PluginsOfPlugins
+
+[nagare.plugins.test4]
+selection = nagare.services.tests.plugins_test:Selection
+
+[nagare.services.auth]
+user = nagare.services.tests.plugins_test:UserPlugin
+ldap = nagare.services.tests.plugins_test:LdapPlugin
+
+[nagare.services.test1]
+service1 = nagare.services.tests.services_test:DummyService1
+service2 = nagare.services.tests.services_test:DummyService2
+
+[nagare.services.test2]
+service1 = nagare.services.tests.services_test:DummyService3
+service2 = nagare.services.tests.services_test:DummyService4
+
+[nagare.services.test3]
+service1 = nagare.services.tests.services_test:DummyService3
+service2 = nagare.services.tests.services_test:DummyService4
+service3 = nagare.services.tests.services_test:DummyService5
+
+[nagare.services.test4]
+service1 = nagare.services.tests.services_test:DummyService3
+service2 = nagare.services.tests.services_test:DummyService4
+service3 = nagare.services.tests.services_test:DummyService5
+service4 = nagare.services.tests.services_test:DummyService6
