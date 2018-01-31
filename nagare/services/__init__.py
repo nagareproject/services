@@ -8,3 +8,7 @@
 # the file LICENSE.txt, which you should have received as part of
 # this distribution.
 # --
+
+from pkgutil import extend_path
+
+__path__ = extend_path(__path__, __name__)

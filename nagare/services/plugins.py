@@ -73,7 +73,10 @@ class Plugins(OrderedDict):
         return list(pkg_resources.iter_entry_points(self.entry_points))
 
     def load_activated_plugins(self, entries, activations=None):
-        plugins = [(entry, entry.load()) for entry in entries if (activations is None) or (entry.name in activations)]
+        plugins = []
+        for entry in entries:
+            if (activations is None) or (entry.name in activations):
+                plugins.append((entry, entry.load()))
 
         return sorted(plugins, key=lambda (entry, plugin): self.load_order(plugin))
 
@@ -199,7 +202,7 @@ class Plugins(OrderedDict):
                 if module.startswith('nagare.'):
                     module = '~' + module[7:]
 
-                description = (activated_plugin or plugin).DESC
+                description = (plugin if activated_plugin is None else activated_plugin).DESC
 
                 print '  %5d %s %s %s%s%s' % (
                     plugin.LOAD_PRIORITY,
