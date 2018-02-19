@@ -73,14 +73,13 @@ class Plugins(OrderedDict):
         return list(pkg_resources.iter_entry_points(self.entry_points))
 
     def load_activated_plugins(self, entries, activations=None):
-        plugins = []
-        for entry in entries:
-            if (activations is None) or (entry.name in activations):
-                plugins.append((entry, entry.load()))
+        plugins = {entry.name: entry for entry in entries if (activations is None) or (entry.name in activations)}
+        plugins = [(entry, entry.load()) for entry in plugins.values()]
 
         return sorted(plugins, key=lambda (entry, plugin): self.load_order(plugin))
 
-    def merge_initial_config(self, config, **initial_config):
+    @staticmethod
+    def merge_initial_config(config, **initial_config):
         """Merge some variables into the plugins config
 
         In:
@@ -90,7 +89,7 @@ class Plugins(OrderedDict):
         """
         config.merge(initial_config)
 
-    def read_config(self, spec, config, config_section, **initial_config):
+    def read_config(self, spec, config, config_section, interpolation='Template', **initial_config):
         """Read and validate all the plugins configurations
 
         In:
@@ -105,7 +104,7 @@ class Plugins(OrderedDict):
         if config_section:
             spec = {config_section: spec}
 
-        plugins_conf = configobj.ConfigObj(config, configspec=spec, interpolation='Template')
+        plugins_conf = configobj.ConfigObj(config, configspec=spec, interpolation=interpolation)
 
         self.merge_initial_config(plugins_conf, **initial_config)
         validate(plugins_conf, getattr(config, 'filename', None))
@@ -113,7 +112,7 @@ class Plugins(OrderedDict):
         return (plugins_conf[config_section] if config_section else plugins_conf).dict()
 
     @staticmethod
-    def _load_plugin(name, dist, plugin, plugin_config, *args, **kw):
+    def _load_plugin(name, dist, plugin, initial_config, plugin_config, *args, **kw):
         """Load and activate a plugin
 
         In:
@@ -156,15 +155,11 @@ class Plugins(OrderedDict):
             name = entry.name
             category = '%s ' % (plugin.CATEGORY if plugin.CATEGORY else '')
 
-            if name in self:
-                print 'Name conflict: %s<%s> already defined' % (category, name)
-                raise NameError(name)
-
             try:
                 plugin_config = config[name]
                 plugin_config.pop('activated', None)
 
-                plugin_instance = self._load_plugin(name, entry.dist, plugin, plugin_config)
+                plugin_instance = self._load_plugin(name, entry.dist, plugin, initial_config, plugin_config)
                 if plugin_instance is not None:
                     self[name] = plugin_instance
             except Exception:
@@ -183,33 +178,57 @@ class Plugins(OrderedDict):
 
         return new
 
-    def display(self, title='Plugins', criterias=lambda plugins, name, plugin: True):
+    def display(self, title='Plugins', activated_columns=None, criterias=lambda plugins, name, plugin: True):
         plugins = self.load_activated_plugins(self.iter_entry_points())
-        plugins = [(entry.name, plugin) for entry, plugin in plugins]
-        plugins = filter(lambda (name, plugin): criterias(self, name, plugin), plugins)
-        plugins.sort(key=lambda (name, plugin): self.load_order(plugin))
+        plugins = [(entry.name, entry.dist, plugin) for entry, plugin in plugins]
+        plugins = filter(lambda (name, dist, plugin): criterias(self, name, plugin), plugins)
+        plugins.sort(key=lambda (name, dist, plugin): self.load_order(plugin))
+        plugins = OrderedDict((name, (dist, plugin)) for name, dist, plugin in plugins)
 
         print title + ':'
 
-        if plugins:
-            plugin = max(plugins, key=lambda (name, _): len(name))
-            max_name = len(plugin[0])
-
-            for name, plugin in plugins:
-                activated_plugin = self.get(name)
-
+        if not plugins:
+            print '  <empty>'
+        else:
+            def extract_module(plugin):
                 module = plugin.__module__ + '.'
                 if module.startswith('nagare.'):
                     module = '~' + module[7:]
 
-                description = (plugin if activated_plugin is None else activated_plugin).DESC
+                return module + plugin.__name__
 
-                print '  %5d %s %s %s%s%s' % (
-                    plugin.LOAD_PRIORITY,
-                    '+' if activated_plugin else '-',
-                    name.ljust(max_name),
-                    module, plugin.__name__,
-                    (' (%s)' % description) if description else ''
-                )
-        else:
-            print '  <empty>'
+            def extract_description(plugin, activated_plugin):
+                return (plugin if activated_plugin is None else activated_plugin).DESC
+
+            columns = [
+                ['Order', lambda name, dist, plugin, activated: str(plugin.LOAD_PRIORITY), False],
+                ['X', lambda name, dist, plugin, activated: '-' if activated is None else '+', True],
+                ['Name', lambda name, dist, plugin, activated: name, True],
+                ['Package', lambda name, dist, plugin, activated: dist.project_name, True],
+                ['Version', lambda name, dist, plugin, activated: dist.version, True],
+                ['Module', lambda name, dist, plugin, activated: extract_module(plugin), True],
+                ['Location', lambda name, dist, plugin, activated: dist.location, True],
+                ['Description', lambda name, dist, plugin, activated: extract_description(plugin, activated), True],
+            ]
+
+            activated_columns = {'order', 'x', 'name'} | (activated_columns or set())
+            columns = [column for column in columns if column[0].lower() in activated_columns]
+
+            for column in columns:
+                label, extract, left = column
+                padding = max(len(extract(name, dist, plugin, self.get(name))) for name, (dist, plugin) in plugins.items())
+                column.append(max((padding, len(label))))
+
+            labels = [(label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns]
+            print '  ' + ' '.join(labels)
+            labels = ['-' * padding for label, extract, left, padding in columns]
+            print '  ' + ' '.join(labels)
+
+            for name, (dist, plugin) in plugins.items():
+                fields = []
+                for label, extract, left, padding in columns:
+                    field = extract(name, dist, plugin, self.get(name))
+                    field = (field.ljust if left else field.rjust)(padding)
+                    fields.append(field)
+
+                print '  ' + ' '.join(fields)

@@ -55,7 +55,7 @@ class Services(dependencies.Dependencies, plugins.Plugins):
 
         return name, dependency
 
-    def _load_plugin(self, name, dist, service, config, *args, **kw):
+    def _load_plugin(self, name, dist, service, initial_config, config, *args, **kw):
         """Load and activate a service
 
         In:
@@ -64,7 +64,10 @@ class Services(dependencies.Dependencies, plugins.Plugins):
         Returns:
           - the service
         """
+        if hasattr(service, 'WITH_INITIAL_CONFIG'):
+            args = (initial_config,) + args
+
         return self(service, name, dist, *args, **dict(config, **kw))
 
-    def display(self, title='Services', criterias=lambda _: True):
-        super(Services, self).display(title, criterias)
+    def display(self, title='Services', activated_columns=None, criterias=lambda _: True):
+        super(Services, self).display(title, activated_columns, criterias)

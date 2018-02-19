@@ -24,18 +24,20 @@ class Plugin(object):
     LOAD_PRIORITY = 1000  # The plugins are loaded from lowest to highest priority value
 
     def __init__(self, name, dist, **config):
-        pass
+        self.name = name
 
 
 class PluginsPlugin(plugins.Plugins, Plugin):
     """The plugin is itself a plugins registry"""
 
     def __init__(self, name, dist, **config):
-        super(PluginsPlugin, self).__init__(config, '')
+        plugins.Plugins.__init__(self, config, '')
+        Plugin.__init__(self, name, dist)
 
 
 class SelectionPlugin(PluginsPlugin):
     CONFIG_SPEC = {'type': 'string(default=None)'}
+    WITH_INITIAL_CONFIG = True
 
     def __init__(self, name, dist, type, **config):
         self.type = type
