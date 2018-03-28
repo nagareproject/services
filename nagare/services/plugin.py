@@ -45,8 +45,8 @@ class SelectionPlugin(PluginsPlugin):
         config = {type: config} if type else {}
         super(SelectionPlugin, self).__init__(name, dist, **config)
 
-    def load_activated_plugins(self, entries, activations):
-        return super(SelectionPlugin, self).load_activated_plugins(entries, {self.type})
+    def load_activated_plugins(self, activations=None):
+        return super(SelectionPlugin, self).load_activated_plugins({self.type})
 
     @property
     def plugin(self):

@@ -72,11 +72,13 @@ class Plugins(OrderedDict):
         """
         return list(pkg_resources.iter_entry_points(self.entry_points))
 
-    def load_activated_plugins(self, entries, activations=None):
-        plugins = {entry.name: entry for entry in entries if (activations is None) or (entry.name in activations)}
-        plugins = [(entry, entry.load()) for entry in plugins.values()]
+    def load_activated_plugins(self, activations=None):
+        entries = self.iter_entry_points()
 
-        return sorted(plugins, key=lambda (entry, plugin): self.load_order(plugin))
+        plugins = [(entry, entry.load()) for entry in entries if (activations is None) or (entry.name in activations)]
+        plugins.sort(key=lambda (entry, plugin): self.load_order(plugin))
+
+        return OrderedDict((entry.name, (entry, plugin)) for entry, plugin in plugins).values()
 
     @staticmethod
     def merge_initial_config(config, **initial_config):
@@ -133,17 +135,14 @@ class Plugins(OrderedDict):
           - ``initial_config`` -- other configuration parameters not read from the configuration file
         """
         entries = self.iter_entry_points()
-
         activations = self.read_config(
             {entry.name: {'activated': 'boolean(default=%s)' % self.activated_by_default} for entry in entries},
             config, self.CONFIG_SECTION if config_section is None else config_section,
             **initial_config
         )
+        activated_plugins = {entry.name for entry in entries if activations[entry.name]['activated']}
 
-        plugins = self.load_activated_plugins(
-            entries,
-            {entry.name for entry in entries if activations[entry.name]['activated']}
-        )
+        plugins = self.load_activated_plugins(activated_plugins)
 
         config = self.read_config(
             {entry.name: plugin.CONFIG_SPEC for entry, plugin in plugins},
@@ -179,7 +178,8 @@ class Plugins(OrderedDict):
         return new
 
     def display(self, title='Plugins', activated_columns=None, criterias=lambda plugins, name, plugin: True):
-        plugins = self.load_activated_plugins(self.iter_entry_points())
+        plugins = self.load_activated_plugins()
+
         plugins = [(entry.name, entry.dist, plugin) for entry, plugin in plugins]
         plugins = filter(lambda (name, dist, plugin): criterias(self, name, plugin), plugins)
         plugins.sort(key=lambda (name, dist, plugin): self.load_order(plugin))
@@ -219,7 +219,7 @@ class Plugins(OrderedDict):
                 padding = max(len(extract(name, dist, plugin, self.get(name))) for name, (dist, plugin) in plugins.items())
                 column.append(max((padding, len(label))))
 
-            labels = [(label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns]
+            labels = [(label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns]  # noqa: F812
             print '  ' + ' '.join(labels)
             labels = ['-' * padding for label, extract, left, padding in columns]
             print '  ' + ' '.join(labels)

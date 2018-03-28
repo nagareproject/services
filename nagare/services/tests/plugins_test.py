@@ -120,8 +120,7 @@ def test_discover_plugin1():
     entries = repository.iter_entry_points()
     assert len(entries) == 2
 
-    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins(entries)]
-    assert len(plugins) == 2
+    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins()]
     ((test_name1, test_plugin1), (test_name2, test_plugin2)) = plugins
 
     assert test_name1 == 'test1'
@@ -129,7 +128,7 @@ def test_discover_plugin1():
     assert test_name2 == 'test2'
     assert test_plugin2 is DummyPlugin2
 
-    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins(entries, {'test1', 'test2'})]
+    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins({'test1', 'test2'})]
     assert len(plugins) == 2
     (test_name1, test_plugin1), (test_name2, test_plugin2) = plugins
 
@@ -138,14 +137,14 @@ def test_discover_plugin1():
     assert test_name2 == 'test2'
     assert test_plugin2 is DummyPlugin2
 
-    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins(entries, {'test1'})]
+    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins({'test1'})]
     assert len(plugins) == 1
     ((test_name1, test_plugin1),) = plugins
 
     assert test_name1 == 'test1'
     assert test_plugin1 is DummyPlugin1
 
-    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins(entries, {'test2'})]
+    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins({'test2'})]
     assert len(plugins) == 1
     ((test_name2, test_plugin2),) = plugins
 
@@ -155,22 +154,19 @@ def test_discover_plugin1():
 
 def test_load_priority():
     repository = DummyPlugins()
-    entries = repository.iter_entry_points()
-    plugins = [entry.name for entry, _ in repository.load_activated_plugins(entries)]
+    plugins = [entry.name for entry, _ in repository.load_activated_plugins()]
 
     assert list(plugins) == ['test1', 'test2']
 
     repository = DummyPlugins(entry_points='nagare.plugins.test2')
-    entries = repository.iter_entry_points()
-    plugins = [entry.name for entry, _ in repository.load_activated_plugins(entries)]
+    plugins = [entry.name for entry, _ in repository.load_activated_plugins()]
 
     assert list(plugins) == ['test1', 'test2']
 
 
 def test_read_config1():
     repository = DummyPlugins()
-    entries = repository.iter_entry_points()
-    spec = {entry.name: plugin.CONFIG_SPEC for entry, plugin in repository.load_activated_plugins(entries)}
+    spec = {entry.name: plugin.CONFIG_SPEC for entry, plugin in repository.load_activated_plugins()}
     conf = repository.read_config(spec, CONFIG, 'my_plugins', root='/tmp/test', greeting='Hello')
 
     assert len(conf['test1']) == 2
@@ -186,8 +182,7 @@ def test_read_config1():
 
 def test_read_config2():
     repository = DummyPlugins()
-    entries = repository.iter_entry_points()
-    spec = {entry.name: plugin.CONFIG_SPEC for entry, plugin in repository.load_activated_plugins(entries)}
+    spec = {entry.name: plugin.CONFIG_SPEC for entry, plugin in repository.load_activated_plugins()}
     conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
     conf = repository.read_config(spec, ConfigObj(conf_filename), 'my_plugins', root='/tmp/test', greeting='Hello')
 
