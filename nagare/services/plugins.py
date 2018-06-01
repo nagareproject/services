@@ -19,6 +19,7 @@ import configobj
 import pkg_resources
 
 from .config import validate
+from .reporters import PluginsReporter
 
 
 class Plugins(OrderedDict):
@@ -177,58 +178,19 @@ class Plugins(OrderedDict):
 
         return new
 
-    def display(self, title='Plugins', activated_columns=None, criterias=lambda plugins, name, plugin: True):
+    def report(self, title='Plugins', activated_columns=None, criterias=lambda plugins, name, plugin: True):
         plugins = self.load_activated_plugins()
 
         plugins = [(entry.name, entry.dist, plugin) for entry, plugin in plugins]
         plugins = filter(lambda (name, dist, plugin): criterias(self, name, plugin), plugins)
-        plugins.sort(key=lambda (name, dist, plugin): self.load_order(plugin))
-        plugins = OrderedDict((name, (dist, plugin)) for name, dist, plugin in plugins)
 
-        print title + ':'
+        print title + ':\n'
 
         if not plugins:
             print '  <empty>'
         else:
-            def extract_module(plugin):
-                module = plugin.__module__ + '.'
-                if module.startswith('nagare.'):
-                    module = '~' + module[7:]
+            plugins.sort(key=lambda (name, dist, plugin): self.load_order(plugin))
+            plugins = OrderedDict((name, (dist, plugin)) for name, dist, plugin in plugins)
+            plugins = [(dist, name, plugin, self.get(name)) for name, (dist, plugin) in plugins.items()]
 
-                return module + plugin.__name__
-
-            def extract_description(plugin, activated_plugin):
-                return (plugin if activated_plugin is None else activated_plugin).DESC
-
-            columns = [
-                ['Order', lambda name, dist, plugin, activated: str(plugin.LOAD_PRIORITY), False],
-                ['X', lambda name, dist, plugin, activated: '-' if activated is None else '+', True],
-                ['Name', lambda name, dist, plugin, activated: name, True],
-                ['Package', lambda name, dist, plugin, activated: dist.project_name, True],
-                ['Version', lambda name, dist, plugin, activated: dist.version, True],
-                ['Module', lambda name, dist, plugin, activated: extract_module(plugin), True],
-                ['Location', lambda name, dist, plugin, activated: dist.location, True],
-                ['Description', lambda name, dist, plugin, activated: extract_description(plugin, activated), True],
-            ]
-
-            activated_columns = {'order', 'x', 'name'} | (activated_columns or set())
-            columns = [column for column in columns if column[0].lower() in activated_columns]
-
-            for column in columns:
-                label, extract, left = column
-                padding = max(len(extract(name, dist, plugin, self.get(name))) for name, (dist, plugin) in plugins.items())
-                column.append(max((padding, len(label))))
-
-            labels = [(label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns]  # noqa: F812
-            print '  ' + ' '.join(labels)
-            labels = ['-' * padding for label, extract, left, padding in columns]
-            print '  ' + ' '.join(labels)
-
-            for name, (dist, plugin) in plugins.items():
-                fields = []
-                for label, extract, left, padding in columns:
-                    field = extract(name, dist, plugin, self.get(name))
-                    field = (field.ljust if left else field.rjust)(padding)
-                    fields.append(field)
-
-                print '  ' + ' '.join(fields)
+            PluginsReporter().report({'name', 'order', 'x'} | (activated_columns or set()), plugins)

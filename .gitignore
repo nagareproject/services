@@ -13,6 +13,8 @@ dist
 .idea
 .coverage
 .eggs
+*.egg-info
+.pytest_cache
 *.swp
 build
 dist
