@@ -91,7 +91,7 @@ class Plugins(OrderedDict):
         """
         config.merge(initial_config)
 
-    def read_config(self, spec, config, config_section, interpolation='Template', **initial_config):
+    def read_config(self, spec, config, config_section, interpolation='TemplateWithDefaults', **initial_config):
         """Read and validate all the plugins configurations
 
         In:

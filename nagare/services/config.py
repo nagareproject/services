@@ -17,6 +17,43 @@ from validate import Validator
 from . import exceptions
 
 
+class Match(dict):
+    def group(self, name=None):
+        return self.get(name, [self['escaped'], self['named'], self['braced']])
+
+
+class TemplateInterpolation(configobj.TemplateInterpolation):
+    def __init__(self, section):
+        self.key = None
+        super(TemplateInterpolation, self).__init__(section)
+
+    def interpolate(self, key, value):
+        self.key = key
+        return super(TemplateInterpolation, self).interpolate(key, value)
+
+    def _parse_match(self, match):
+        groups = match.groupdict()
+
+        braced = groups['braced']
+        if braced and (':' in braced):
+            groups['braced'], default = braced.split(':', 1)
+        else:
+            default = None
+
+        try:
+            r = super(TemplateInterpolation, self)._parse_match(Match(**groups))
+        except configobj.MissingInterpolationOption:
+            if not default:
+                raise
+
+            r = self.key + '#', default, self.section
+
+        return r
+
+
+configobj.interpolation_engines['templatewithdefaults'] = TemplateInterpolation
+
+
 def _validate(config, filename=None):
     """Validate a ``ConfigObj`` configuration
 

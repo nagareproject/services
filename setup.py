@@ -13,7 +13,6 @@ from os import path
 
 from setuptools import setup, find_packages
 
-
 here = path.normpath(path.dirname(__file__))
 
 with open(path.join(here, 'README.rst')) as long_description:
