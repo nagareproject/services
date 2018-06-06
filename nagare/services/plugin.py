@@ -10,6 +10,10 @@
 
 """Base classes for the loadable plugins"""
 
+from itertools import groupby, chain
+
+from configobj import ConfigObj
+
 from . import plugins
 
 
@@ -17,7 +21,6 @@ class Plugin(object):
     """The plugin is a class"""
 
     DESC = ''
-    CATEGORY = None  # Category of the plugin
     # Specification of the plugin configuration, read from the application
     # configuration file (http://www.voidspace.org.uk/python/configobj.html#validate)
     CONFIG_SPEC = {}
@@ -25,6 +28,21 @@ class Plugin(object):
 
     def __init__(self, name, dist, **config):
         self.name = name
+        self.plugin_category = 'nagare.plugins'
+        self._plugin_config = None
+
+    def info(self, names=()):
+        names = ' / '.join(names + (self.name,))
+        print names
+        print '-' * len(names)
+
+        print '\nConfiguration:\n'
+
+        lines = ConfigObj(self._plugin_config).write() or ['<empty>']
+        for section, lines in groupby(lines, lambda l: l.lstrip().startswith('[')):
+            lines = chain([''], lines) if section else sorted(lines)
+
+            print '  ' + '\n  '.join(lines)
 
 
 class PluginsPlugin(plugins.Plugins, Plugin):
@@ -47,6 +65,9 @@ class SelectionPlugin(PluginsPlugin):
 
     def load_activated_plugins(self, activations=None):
         return super(SelectionPlugin, self).load_activated_plugins({self.type})
+
+    def info(self, names=()):
+        self.plugin.info(names + (self.name,))
 
     @property
     def plugin(self):

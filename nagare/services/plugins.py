@@ -115,7 +115,7 @@ class Plugins(OrderedDict):
         return (plugins_conf[config_section] if config_section else plugins_conf).dict()
 
     @staticmethod
-    def _load_plugin(name, dist, plugin, initial_config, plugin_config, *args, **kw):
+    def _load_plugin(name, dist, plugin_cls, initial_config, plugin_config, *args, **kw):
         """Load and activate a plugin
 
         In:
@@ -124,7 +124,9 @@ class Plugins(OrderedDict):
         Returns:
           - the plugin
         """
-        return plugin(name, dist, *args, **dict(plugin_config, **kw))
+        config = dict(plugin_config, **kw)
+
+        return plugin_cls(name, dist, *args, **config), config
 
     def load_plugins(self, config, config_section=None, **initial_config):
         """Load, configure, activate and register the plugins
@@ -153,17 +155,22 @@ class Plugins(OrderedDict):
 
         for entry, plugin in plugins:
             name = entry.name
-            category = '%s ' % (plugin.CATEGORY if plugin.CATEGORY else '')
 
             try:
                 plugin_config = config[name]
                 plugin_config.pop('activated', None)
 
-                plugin_instance = self._load_plugin(name, entry.dist, plugin, initial_config, plugin_config)
+                plugin_instance, plugin_config = self._load_plugin(
+                    name, entry.dist,
+                    plugin,
+                    initial_config, plugin_config
+                )
+
                 if plugin_instance is not None:
+                    plugin_instance._plugin_config = plugin_config
                     self[name] = plugin_instance
             except Exception:
-                print "%s<%s> can't be loaded" % (category.capitalize(), name)
+                print "'%s' can't be loaded" % name
                 raise
 
     def copy(self, **kw):
