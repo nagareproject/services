@@ -12,6 +12,10 @@
 """Dependencies registration and injection"""
 
 import inspect
+try:
+    from inspect import getfullargspec as getargspec
+except ImportError:
+    from inspect import getargspec
 import functools
 
 from . import exceptions
@@ -74,14 +78,14 @@ class Dependencies(dict):
         # Get the signature of ``f`` or the signature of its ``__init__`` method if ``f`` is a class
         f2 = f
         if inspect.isclass(f):
-            f2 = f.__init__ if inspect.ismethod(f.__init__) else lambda: None
+            f2 = f.__init__ if inspect.isroutine(f.__init__) else lambda: None
 
-        args_spec = inspect.getargspec(f2)
+        args_spec = getargspec(f2)
 
         nb_default_values = len(args_spec.defaults or ())
         names = args_spec.args
 
-        # Retreive the dependencies to inject
+        # Retrieve the dependencies to inject
         dependencies = dict(
             self.get_dependency(name, i >= nb_default_values)
             for i, name in enumerate(reversed(names))

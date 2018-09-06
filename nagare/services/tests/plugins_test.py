@@ -244,7 +244,7 @@ def test_load3():
     repository = DummyPlugins(conf_filename, 'my_plugins2', 'nagare.plugins.test3', default_email='admin@localhost')
 
     assert len(repository) == 1
-    (name, plugins_of_plugins) = repository.items()[0]
+    (name, plugins_of_plugins) = next(iter(repository.items()))
 
     assert name == 'authentication'
     assert plugins_of_plugins.name == 'authentication'
@@ -268,7 +268,7 @@ def test_load4():
     repository = DummyPlugins(conf_filename, 'test4', 'nagare.plugins.test4')
 
     assert len(repository) == 1
-    (name, selection) = repository.items()[0]
+    (name, selection) = next(iter(repository.items()))
 
     assert name == 'selection'
     plugin = selection.plugin
@@ -281,7 +281,7 @@ def test_load4():
     repository = DummyPlugins(conf_filename, 'test5', 'nagare.plugins.test4')
 
     assert len(repository) == 1
-    (name, selection) = repository.items()[0]
+    (name, selection) = next(iter(repository.items()))
 
     assert name == 'selection'
     plugin = selection.plugin

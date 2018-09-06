@@ -10,6 +10,9 @@
 
 """Base classes for the loadable plugins"""
 
+from __future__ import absolute_import
+
+import logging
 from itertools import groupby, chain
 
 from configobj import ConfigObj
@@ -31,18 +34,26 @@ class Plugin(object):
         self.plugin_category = 'nagare.plugins'
         self._plugin_config = None
 
+    @property
+    def logger(self):
+        logging.getLogger(self.plugin_category + '.' + self.name)
+
+    @logger.setter
+    def logger(self, logger):
+        pass
+
     def info(self, names=()):
         names = ' / '.join(names + (self.name,))
-        print names
-        print '-' * len(names)
+        print(names)
+        print('-' * len(names))
 
-        print '\nConfiguration:\n'
+        print('\nConfiguration:\n')
 
         lines = ConfigObj(self._plugin_config).write() or ['<empty>']
         for section, lines in groupby(lines, lambda l: l.lstrip().startswith('[')):
             lines = chain([''], lines) if section else sorted(lines)
 
-            print '  ' + '\n  '.join(lines)
+            print('  ' + '\n  '.join(lines))
 
 
 class PluginsPlugin(plugins.Plugins, Plugin):

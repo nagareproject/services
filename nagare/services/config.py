@@ -43,7 +43,7 @@ class TemplateInterpolation(configobj.TemplateInterpolation):
         try:
             r = super(TemplateInterpolation, self)._parse_match(Match(**groups))
         except configobj.MissingInterpolationOption:
-            if not default:
+            if default is None:
                 raise
 
             r = self.key + '#', default, self.section

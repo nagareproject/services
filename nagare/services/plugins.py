@@ -77,9 +77,9 @@ class Plugins(OrderedDict):
         entries = self.iter_entry_points()
 
         plugins = [(entry, entry.load()) for entry in entries if (activations is None) or (entry.name in activations)]
-        plugins.sort(key=lambda (entry, plugin): self.load_order(plugin))
+        plugins.sort(key=lambda plugin: self.load_order(plugin[1]))
 
-        return OrderedDict((entry.name, (entry, plugin)) for entry, plugin in plugins).values()
+        return list(OrderedDict((entry.name, (entry, plugin)) for entry, plugin in plugins).values())
 
     @staticmethod
     def merge_initial_config(config, **initial_config):
@@ -170,7 +170,7 @@ class Plugins(OrderedDict):
                     plugin_instance._plugin_config = plugin_config
                     self[name] = plugin_instance
             except Exception:
-                print "'%s' can't be loaded" % name
+                print("'%s' can't be loaded" % name)
                 raise
 
     def copy(self, **kw):
@@ -189,14 +189,14 @@ class Plugins(OrderedDict):
         plugins = self.load_activated_plugins()
 
         plugins = [(entry.name, entry.dist, plugin) for entry, plugin in plugins]
-        plugins = filter(lambda (name, dist, plugin): criterias(self, name, plugin), plugins)
+        plugins = filter(lambda plugin: criterias(self, plugin[0], plugin[2]), plugins)
 
-        print title + ':\n'
+        print(title + ':\n')
 
         if not plugins:
-            print '  <empty>'
+            print('  <empty>')
         else:
-            plugins.sort(key=lambda (name, dist, plugin): self.load_order(plugin))
+            plugins = sorted(plugins, key=lambda plugin: self.load_order(plugin[2]))
             plugins = OrderedDict((name, (dist, plugin)) for name, dist, plugin in plugins)
             plugins = [(dist, name, plugin, self.get(name)) for name, (dist, plugin) in plugins.items()]
 

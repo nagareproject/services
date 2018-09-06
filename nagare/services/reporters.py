@@ -27,9 +27,9 @@ class PackagesReporter(object):
             column.append(max((padding, len(label))))
 
         labels = [(label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns]  # noqa: F812
-        print '  ' + ' '.join(labels)
+        print('  ' + ' '.join(labels))
         labels = ['-' * padding for label, extract, left, padding in columns]
-        print '  ' + ' '.join(labels)
+        print('  ' + ' '.join(labels))
 
         for args in packages:
             fields = []
@@ -38,7 +38,7 @@ class PackagesReporter(object):
                 field = (field.ljust if left else field.rjust)(padding)
                 fields.append(field)
 
-            print '  ' + ' '.join(fields)
+            print('  ' + ' '.join(fields))
 
 
 class PluginsReporter(PackagesReporter):
