@@ -9,10 +9,16 @@
 # this distribution.
 # --
 
-image: docker-registry.net-ng.com/nagare/stackless:2.7.14
+image: docker-registry.net-ng.com/nng/dind-ubuntu:7
 
-tests:
+tests2:
   script:
-    - /opt/stackless/bin/pip install flake8
-    - /opt/stackless/bin/flake8 nagare
-    - /opt/stackless/bin/python setup.py test
+    - pip2 install flake8 pytest .
+    - flake8 nagare
+    - pytest
+
+tests3:
+  script:
+  - pip3 install flake8 pytest .
+  - flake8 nagare
+  - pytest
