@@ -27,10 +27,10 @@ setup(
     license='BSD',
     keywords='',
     url='https://github.com/nagareproject/services',
+    python_requires='>=2.7.*,!=3.0,!=3.1,!=3.2,!=3.3,!=3.4',
     packages=find_packages(exclude=['tests']),
     zip_safe=False,
-    setup_requires=['setuptools_scm', 'pytest-runner'],
+    setup_requires=['setuptools_scm'],
     use_scm_version=True,
-    install_requires=['configobj'],
-    tests_require=['pytest']
+    install_requires=['configobj']
 )
