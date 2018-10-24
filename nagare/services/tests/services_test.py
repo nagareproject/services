@@ -69,7 +69,7 @@ class DummyService6(plugin.Plugin):
     LOAD_PRIORITY = 4
 
     def __init__(self, *args, **kw):
-        raise NotImplemented()
+        raise NotImplementedError()
 
 # ---------------------------------------------------------------------------------------------------------------------
 
