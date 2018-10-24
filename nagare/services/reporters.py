@@ -19,6 +19,10 @@ class PackagesReporter(object):
         ]
 
     def report(self, activated_columns, packages):
+        if not packages:
+            print('  <empty>')
+            return
+
         columns = [column for column in self.columns if column[0].lower() in activated_columns]
 
         for column in columns:

@@ -36,24 +36,21 @@ class Plugin(object):
 
     @property
     def logger(self):
-        logging.getLogger(self.plugin_category + '.' + self.name)
+        return logging.getLogger(self.plugin_category + '.' + self.name)
 
     @logger.setter
     def logger(self, logger):
         pass
 
-    def info(self, names=()):
-        names = ' / '.join(names + (self.name,))
-        print(names)
-        print('-' * len(names))
+    def info(self, names=(), type_=None):
+        section = dict(self._plugin_config, activated=True)
+        if type_:
+            section[type_] = self.name
 
-        print('\nConfiguration:\n')
-
-        lines = ConfigObj(self._plugin_config).write() or ['<empty>']
+        lines = ConfigObj({'.'.join(names) or self.name: section}).write()
         for section, lines in groupby(lines, lambda l: l.lstrip().startswith('[')):
             lines = chain([''], lines) if section else sorted(lines)
-
-            print('  ' + '\n  '.join(lines))
+            print('\n'.join(lines))
 
 
 class PluginsPlugin(plugins.Plugins, Plugin):
@@ -78,7 +75,11 @@ class SelectionPlugin(PluginsPlugin):
         return super(SelectionPlugin, self).load_activated_plugins({self.type})
 
     def info(self, names=()):
-        self.plugin.info(names + (self.name,))
+        if self.plugin:
+            self.plugin.info(
+                names + (self.name,),
+                next(iter(self.CONFIG_SPEC))
+            )
 
     @property
     def plugin(self):
