@@ -35,6 +35,7 @@ class PackagesReporter(object):
         labels = ['-' * padding for label, extract, left, padding in columns]
         print('  ' + ' '.join(labels))
 
+        rows = []
         for args in packages:
             fields = []
             for label, extract, left, padding in columns:
@@ -42,6 +43,9 @@ class PackagesReporter(object):
                 field = (field.ljust if left else field.rjust)(padding)
                 fields.append(field)
 
+            rows.append(fields)
+
+        for fields in sorted(rows):
             print('  ' + ' '.join(fields))
 
 
