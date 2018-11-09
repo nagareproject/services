@@ -18,17 +18,20 @@ from . import exceptions
 
 
 class Match(dict):
+
     def group(self, name=None):
         return self.get(name, [self['escaped'], self['named'], self['braced']])
 
 
 class TemplateInterpolation(configobj.TemplateInterpolation):
+
     def __init__(self, section):
         self.key = None
         super(TemplateInterpolation, self).__init__(section)
 
     def interpolate(self, key, value):
         self.key = key
+
         return super(TemplateInterpolation, self).interpolate(key, value)
 
     def _parse_match(self, match):
@@ -50,6 +53,19 @@ class TemplateInterpolation(configobj.TemplateInterpolation):
 
         return r
 
+    def _fetch(self, key):
+        if '.' not in key:
+            return super(TemplateInterpolation, self)._fetch(key)
+
+        root_section = self.section
+        while root_section.parent is not root_section:
+            root_section = root_section.parent
+
+        for key in key.split('.'):
+            section, root_section = root_section, root_section[key]
+
+        return root_section, section
+
 
 configobj.interpolation_engines['templatewithdefaults'] = TemplateInterpolation
 
@@ -66,7 +82,21 @@ def _validate(config, filename=None):
     Yields:
       error messages
     """
-    errors = configobj.flatten_errors(config, config.validate(Validator(), preserve_errors=True))
+    functions = {
+        name: (
+            lambda f:
+                lambda value, *args, **kw: f(
+                    value if isinstance(value, (list, tuple)) else [value],
+                    *args, **kw
+                )
+        )(f)
+        for name, f in Validator().functions.items()
+        if (name != 'force_list') and name.endswith('_list')
+    }
+
+    validator = Validator(functions)
+
+    errors = configobj.flatten_errors(config, config.validate(validator, preserve_errors=True))
 
     for sections, name, error in errors:
         prefix = ('file "%s", ' % filename) if filename else ''

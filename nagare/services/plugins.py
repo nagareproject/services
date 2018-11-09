@@ -196,8 +196,7 @@ class Plugins(OrderedDict):
         if not plugins:
             print('  <empty>')
         else:
-            plugins = sorted(plugins, key=lambda plugin: self.load_order(plugin[2]))
-            plugins = OrderedDict((name, (dist, plugin)) for name, dist, plugin in plugins)
+            plugins = {name: (dist, plugin) for name, dist, plugin in plugins}
             plugins = [(dist, name, plugin, self.get(name)) for name, (dist, plugin) in plugins.items()]
 
             PluginsReporter().report({'name', 'order', 'x'} | (activated_columns or set()), plugins)
