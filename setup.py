@@ -15,8 +15,9 @@ from setuptools import setup, find_packages
 
 here = path.normpath(path.dirname(__file__))
 
-with open(path.join(here, 'README.rst')) as long_description:
-    LONG_DESCRIPTION = long_description.read()
+# with open(path.join(here, 'README.rst')) as long_description:
+#     LONG_DESCRIPTION = long_description.read()
+LONG_DESCRIPTION = ''
 
 setup(
     name='nagare-services',
