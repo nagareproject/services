@@ -8,6 +8,8 @@
 # this distribution.
 # --
 
+import sys
+
 
 class PackagesReporter(object):
 
@@ -18,9 +20,10 @@ class PackagesReporter(object):
             ['Location', lambda dist, *args: dist.location, True]
         ]
 
-    def report(self, activated_columns, packages):
+    def report(self, activated_columns, packages, display=None):
+        display = display or (lambda m: sys.stdout.write(m + '\n'))
         if not packages:
-            print('  <empty>')
+            display('  <empty>')
             return
 
         columns = [column for column in self.columns if column[0].lower() in activated_columns]
@@ -31,9 +34,9 @@ class PackagesReporter(object):
             column.append(max((padding, len(label))))
 
         labels = [(label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns]  # noqa: F812
-        print('  ' + ' '.join(labels))
+        display('  ' + ' '.join(labels))
         labels = ['-' * padding for label, extract, left, padding in columns]
-        print('  ' + ' '.join(labels))
+        display('  ' + ' '.join(labels))
 
         rows = []
         for args in packages:
@@ -46,7 +49,7 @@ class PackagesReporter(object):
             rows.append(fields)
 
         for fields in sorted(rows):
-            print('  ' + ' '.join(fields))
+            display('  ' + ' '.join(fields))
 
 
 class PluginsReporter(PackagesReporter):
