@@ -13,9 +13,6 @@
 from __future__ import absolute_import
 
 import logging
-from itertools import groupby, chain
-
-from configobj import ConfigObj
 
 from . import plugins
 
@@ -42,15 +39,16 @@ class Plugin(object):
     def logger(self, logger):
         pass
 
-    def info(self, names=(), type_=None):
-        section = dict(self._plugin_config, activated=True)
-        if type_:
-            section[type_] = self.name
+    @property
+    def plugin_spec(self):
+        return self.CONFIG_SPEC
 
-        lines = ConfigObj({'.'.join(names) or self.name: section}).write()
-        for section, lines in groupby(lines, lambda l: l.lstrip().startswith('[')):
-            lines = chain([''], lines) if section else sorted(lines)
-            print('\n'.join(lines))
+    @property
+    def plugin_config(self):
+        return dict(self._plugin_config, activated=True)
+
+    def format_info(self, names=(), type_=None):
+        yield ''
 
 
 class PluginsPlugin(plugins.Plugins, Plugin):
@@ -71,15 +69,30 @@ class SelectionPlugin(PluginsPlugin):
         config = {type: config} if type else {}
         super(SelectionPlugin, self).__init__(name, dist, **config)
 
+    @property
+    def plugin_spec(self):
+        return dict(
+            self.plugin.plugin_spec,
+            **super(SelectionPlugin, self).plugin_spec
+        )
+
+    @property
+    def plugin_config(self):
+        return dict(
+            self.plugin.plugin_config,
+            **super(SelectionPlugin, self).plugin_config
+        )
+
     def load_activated_plugins(self, activations=None):
         return super(SelectionPlugin, self).load_activated_plugins({self.type})
 
-    def info(self, names=()):
+    def format_info(self, names=()):
         if self.plugin:
-            self.plugin.info(
+            for line in self.plugin.format_info(
                 names + (self.name,),
                 next(iter(self.CONFIG_SPEC))
-            )
+            ):
+                yield line
 
     @property
     def plugin(self):
