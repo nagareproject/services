@@ -11,8 +11,10 @@
 
 """Helper to validate a configuration"""
 
+from functools import partial
+
 import configobj
-from validate import Validator
+from validate import Validator as ConfigobjValidator
 
 from . import exceptions
 
@@ -70,7 +72,27 @@ class TemplateInterpolation(configobj.TemplateInterpolation):
 configobj.interpolation_engines['templatewithdefaults'] = TemplateInterpolation
 
 
-def _validate(config, filename=None):
+class Validator(ConfigobjValidator):
+
+    @staticmethod
+    def new_validate(f, convert_to_list, value, *args, **kw):
+        if convert_to_list and not isinstance(value, (list, tuple)):
+            value = [value]
+
+        kw.pop('help', None)
+
+        return f(value, *args, **kw)
+
+    def create_validation(self, name, f):
+        convert_to_list = (name != 'force_list') and name.endswith('_list')
+        return partial(self.new_validate, f, convert_to_list)
+
+    def __init__(self, functions=None):
+        super(Validator, self).__init__(functions)
+        self.functions = {name: self.create_validation(name, f) for name, f in self.functions.items()}
+
+
+def _validate(config, filename, validator):
     """Validate a ``ConfigObj`` configuration
 
     The configuration object must have an associated ``configspec``
@@ -82,20 +104,6 @@ def _validate(config, filename=None):
     Yields:
       error messages
     """
-    functions = {
-        name: (
-            lambda f:
-                lambda value, *args, **kw: f(
-                    value if isinstance(value, (list, tuple)) else [value],
-                    *args, **kw
-                )
-        )(f)
-        for name, f in Validator().functions.items()
-        if (name != 'force_list') and name.endswith('_list')
-    }
-
-    validator = Validator(functions)
-
     errors = configobj.flatten_errors(config, config.validate(validator, preserve_errors=True))
 
     for sections, name, error in errors:
@@ -107,7 +115,7 @@ def _validate(config, filename=None):
         )
 
 
-def validate(config, filename=None):
+def validate(config, filename=None, validator=None):
     """Validate a ``ConfigObj`` configuration
 
     The configuration object must have an associated ``configspec``
@@ -119,6 +127,6 @@ def validate(config, filename=None):
     Raises:
       BadConfiguration: configuration is not valid
     """
-    errors = list(_validate(config, filename))
+    errors = list(_validate(config, filename, validator or Validator()))
     if errors:
         raise exceptions.BadConfiguration('\n'.join(errors))
