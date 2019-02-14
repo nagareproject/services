@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import logging
 
-from . import plugins
+from . import plugins, exceptions
 
 
 class Plugin(object):
@@ -83,6 +83,21 @@ class SelectionPlugin(PluginsPlugin):
             **super(SelectionPlugin, self).plugin_config
         )
 
+    @property
+    def plugin(self):
+        try:
+            return self[self.type]
+        except KeyError:
+            self.raise_not_found()
+
+    def raise_not_found(self):
+        error = 'section "[{}]", parameter "{}": '.format(self.name, list(self.CONFIG_SPEC)[0])
+        error += 'missing parameter' if self.type is None else'invalid value `{}`'.format(self.type)
+        exc = exceptions.BadConfiguration(error)
+        exc.__cause__ = None
+
+        raise exc
+
     def load_activated_plugins(self, activations=None):
         return super(SelectionPlugin, self).load_activated_plugins({self.type})
 
@@ -93,7 +108,3 @@ class SelectionPlugin(PluginsPlugin):
                 next(iter(self.CONFIG_SPEC))
             ):
                 yield line
-
-    @property
-    def plugin(self):
-        return self.get(self.type)
