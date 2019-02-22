@@ -50,7 +50,6 @@ class DummyPlugin1(plugin.Plugin):
     def __init__(self, name, dist, **config):
         self.name = name
         self.dist = dist
-        self.config = config
 
 
 class DummyPlugin2(plugin.Plugin):
@@ -66,7 +65,6 @@ class DummyPlugin2(plugin.Plugin):
     def __init__(self, name, dist, **config):
         self.name = name
         self.dist = dist
-        self.config = config
 
 
 class PluginsOfPlugins(plugin.PluginsPlugin):
@@ -209,12 +207,12 @@ def test_load1():
 
     assert plugin1_name == 'test1'
     assert plugin1.dist.project_name == 'nagare-services'
-    assert plugin1.config == {'value1': 20, 'value2': '/tmp/test/a.txt'}
+    assert plugin1.plugin_config == {'value1': 20, 'value2': '/tmp/test/a.txt'}
 
     assert plugin2_name == 'test2'
     assert plugin2.name == 'test2'
     assert plugin2.dist.project_name == 'nagare-services'
-    assert plugin2.config == {'value1': 10, 'value2': '/tmp/test/b.txt', 'value3': 'Hello world!'}
+    assert plugin2.plugin_config == {'value1': 10, 'value2': '/tmp/test/b.txt', 'value3': 'Hello world!'}
 
 
 def test_load2():
@@ -231,12 +229,12 @@ def test_load2():
 
     assert plugin1_name == 'test1'
     assert plugin1.dist.project_name == 'nagare-services'
-    assert plugin1.config == {'value1': 20, 'value2': '/tmp/test/a.txt'}
+    assert plugin1.plugin_config == {'value1': 20, 'value2': '/tmp/test/a.txt'}
 
     assert plugin2_name == 'test2'
     assert plugin2.name == 'test2'
     assert plugin2.dist.project_name == 'nagare-services'
-    assert plugin2.config == {'value1': 10, 'value2': '/tmp/test/b.txt', 'value3': 'Hello world!'}
+    assert plugin2.plugin_config == {'value1': 10, 'value2': '/tmp/test/b.txt', 'value3': 'Hello world!'}
 
 
 def test_load3():

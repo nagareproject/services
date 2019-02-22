@@ -45,7 +45,7 @@ class Plugin(object):
 
     @property
     def plugin_config(self):
-        return dict(self._plugin_config, activated=True)
+        return self._plugin_config
 
     def format_info(self, names=(), type_=None):
         yield ''
