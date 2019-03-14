@@ -84,7 +84,7 @@ class Validator(ConfigobjValidator):
         return f(value, *args, **kw)
 
     def create_validation(self, name, f):
-        convert_to_list = (name != 'force_list') and name.endswith('_list')
+        convert_to_list = (name != 'force_list') and name.endswith('list')
         return partial(self.new_validate, f, convert_to_list)
 
     def __init__(self, functions=None):
