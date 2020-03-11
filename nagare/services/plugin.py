@@ -86,7 +86,7 @@ class SelectionPlugin(PluginsPlugin):
     @property
     def plugin(self):
         try:
-            return self[self.type]
+            return self[self.type.replace('.', '_')]
         except KeyError:
             self.raise_not_found()
 

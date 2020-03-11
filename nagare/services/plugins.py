@@ -168,7 +168,7 @@ class Plugins(OrderedDict):
 
                 if plugin_instance is not None:
                     plugin_instance._plugin_config = plugin_config
-                    self[name] = plugin_instance
+                    self[name.replace('.', '_')] = plugin_instance
             except Exception:
                 print("'%s' can't be loaded" % name)
                 raise
@@ -197,6 +197,6 @@ class Plugins(OrderedDict):
             print('  <empty>')
         else:
             plugins = {name: (dist, plugin) for name, dist, plugin in plugins}
-            plugins = [(dist, name, plugin, self.get(name)) for name, (dist, plugin) in plugins.items()]
+            plugins = [(dist, name, plugin, self.get(name.replace('.', '_'))) for name, (dist, plugin) in plugins.items()]
 
             PluginsReporter().report({'name', 'order', 'x'} | (activated_columns or set()), plugins)
