@@ -1,7 +1,7 @@
 # Encoding: utf-8
 
 # --
-# Copyright (c) 2008-2019 Net-ng.
+# Copyright (c) 2008-2020 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -48,6 +48,7 @@ class DummyPlugin1(plugin.Plugin):
     TEST_VALUE = 42
 
     def __init__(self, name, dist, **config):
+        super(DummyPlugin1, self).__init__(name, dist, **config)
         self.name = name
         self.dist = dist
 
@@ -63,6 +64,7 @@ class DummyPlugin2(plugin.Plugin):
     LOAD_PRIORITY = 2000
 
     def __init__(self, name, dist, **config):
+        super(DummyPlugin2, self).__init__(name, dist, **config)
         self.name = name
         self.dist = dist
 
@@ -87,6 +89,7 @@ class PluginsOfPlugins(plugin.PluginsPlugin):
 
 class UserPlugin(plugin.Plugin):
     def __init__(self, name, dist, default_user):
+        super(UserPlugin, self).__init__(name, dist, default_user=default_user)
         self.name = name
         self.dist = dist
         self.default_user = default_user
@@ -96,6 +99,7 @@ class LdapPlugin(plugin.Plugin):
     CONFIG_SPEC = {'host': 'string', 'port': 'integer'}
 
     def __init__(self, name, dist, host, port):
+        super(LdapPlugin, self).__init__(name, dist, host=host, port=port)
         self.name = name
         self.dist = dist
         self.host = host

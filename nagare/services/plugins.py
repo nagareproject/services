@@ -1,6 +1,6 @@
 # Encoding: utf-8
 # --
-# Copyright (c) 2008-2019 Net-ng.
+# Copyright (c) 2008-2020 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -124,9 +124,7 @@ class Plugins(OrderedDict):
         Returns:
           - the plugin
         """
-        config = dict(plugin_config, **kw)
-
-        return plugin_cls(name, dist, *args, **config), config
+        return plugin_cls(name, dist, *args, **dict(plugin_config, **kw))
 
     def load_plugins(self, config, config_section=None, **initial_config):
         """Load, configure, activate and register the plugins
@@ -160,14 +158,13 @@ class Plugins(OrderedDict):
                 plugin_config = config[name]
                 plugin_config.pop('activated', None)
 
-                plugin_instance, plugin_config = self._load_plugin(
+                plugin_instance = self._load_plugin(
                     name, entry.dist,
                     plugin,
                     initial_config, plugin_config
                 )
 
                 if plugin_instance is not None:
-                    plugin_instance._plugin_config = plugin_config
                     self[name.replace('.', '_')] = plugin_instance
             except Exception:
                 print("'%s' can't be loaded" % name)

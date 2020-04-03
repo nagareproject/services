@@ -1,6 +1,6 @@
 # Encoding: utf-8
 # --
-# Copyright (c) 2008-2019 Net-ng.
+# Copyright (c) 2008-2020 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -29,7 +29,7 @@ class Plugin(object):
     def __init__(self, name, dist, **config):
         self.name = name
         self.plugin_category = 'nagare.plugins'
-        self._plugin_config = None
+        self._plugin_config = config
 
     @property
     def logger(self):

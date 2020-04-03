@@ -1,7 +1,7 @@
 # Encoding: utf-8
 
 # --
-# Copyright (c) 2008-2019 Net-ng.
+# Copyright (c) 2008-2020 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -72,7 +72,7 @@ class Services(dependencies.Dependencies, plugins.Plugins):
         service = self(service_cls, name, dist, *args, **config)
         service.plugin_category = 'nagare.services'
 
-        return service, config
+        return service
 
     def report(self, title='Services', activated_columns=None, criterias=lambda _: True):
         super(Services, self).report(title, activated_columns, criterias)
