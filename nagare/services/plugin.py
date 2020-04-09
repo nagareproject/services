@@ -23,17 +23,17 @@ class Plugin(object):
     DESC = ''
     # Specification of the plugin configuration, read from the application
     # configuration file (http://www.voidspace.org.uk/python/configobj.html#validate)
+    PLUGIN_CATEGORY = 'nagare.plugins'
     CONFIG_SPEC = {}
     LOAD_PRIORITY = 1000  # The plugins are loaded from lowest to highest priority value
 
     def __init__(self, name, dist, **config):
         self.name = name
-        self.plugin_category = 'nagare.plugins'
         self._plugin_config = config
 
     @property
     def logger(self):
-        return logging.getLogger(self.plugin_category + '.' + self.name)
+        return logging.getLogger(self.PLUGIN_CATEGORY + '.' + self.name)
 
     @logger.setter
     def logger(self, logger):

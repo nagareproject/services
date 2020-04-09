@@ -69,8 +69,8 @@ class Services(dependencies.Dependencies, plugins.Plugins):
 
         config = dict(config, **kw)
 
+        service_cls.PLUGIN_CATEGORY = 'nagare.services'
         service = self(service_cls, name, dist, *args, **config)
-        service.plugin_category = 'nagare.services'
 
         return service
 
