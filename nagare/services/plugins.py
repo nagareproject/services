@@ -22,7 +22,7 @@ from .config import validate
 from .reporters import PluginsReporter
 
 
-class Plugins(OrderedDict):
+class Plugins(dict):
     ENTRY_POINTS = ''  # Section where to read the entry points
     CONFIG_SECTION = None  # Parent section of the plugins in the application configuration file
 
