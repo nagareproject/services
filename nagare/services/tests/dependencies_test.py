@@ -11,43 +11,47 @@
 
 import pytest
 
-from nagare.services.dependencies import Dependencies
-from nagare.services.exceptions import MissingDependency
+from nagare.services.exceptions import MissingService
+from nagare.services.services import Services as Dependencies
 
 
 def test_dependencies_injection_to_lambdas():
-    dependencies = Dependencies(c=42)
+    dependencies = Dependencies()
+    dependencies['c'] = 42
 
     assert dependencies(lambda a, b, c: a + b + c, 10, 22, c=10) == 42
-    assert dependencies(lambda a, b, c_inject: a + b + c_inject, 10, 22) == 74
-    assert dependencies(lambda a, b, c_inject, d: a + b + c_inject + d, 10, 22, d=10) == 84
-    assert dependencies(lambda a, b, c_inject, d: a + b + c_inject + d, 10, 22, c_inject=2, d=10) == 44
+    assert dependencies(lambda a, b, c_service: a + b + c_service, 10, 22) == 74
+    assert dependencies(lambda a, b, c_service, d: a + b + c_service + d, 10, 22, d=10) == 84
+    assert dependencies(lambda a, b, c_service, d: a + b + c_service + d, 10, 22, c_service=2, d=10) == 44
 
 
 def test_dependencies_injection_to_functions():
-    dependencies = Dependencies(c=42, other=10)
+    dependencies = Dependencies()
+    dependencies.update(dict(c=42, other=10))
 
     def f1(a, b, c):
         return a + b + c
 
     assert dependencies(f1, 10, 22, c=10) == 42
 
-    def f2(a, b, c_inject):
-        return a + b + c_inject
+    def f2(a, b, c_service):
+        return a + b + c_service
 
     assert dependencies(f2, 10, 22) == 74
 
-    def f3(a, b, c_inject, d):
-        return a + b + c_inject + d
+    def f3(a, b, c_service, d):
+        return a + b + c_service + d
 
     assert dependencies(f3, 10, 22, d=10) == 84
 
-    assert dependencies(f3, 10, 22, c_inject=2, d=10) == 44
+    assert dependencies(f3, 10, 22, c_service=2, d=10) == 44
 
 
 def test_dependencies_injection_with_decorator():
-    dependencies1 = Dependencies(c=42, other=10)
-    dependencies2 = Dependencies(c=43)
+    dependencies1 = Dependencies()
+    dependencies1.update(dict(c=42, other=10))
+    dependencies2 = Dependencies()
+    dependencies2['c'] = 43
 
     @dependencies1.inject
     def f1(a, b, c):
@@ -56,22 +60,23 @@ def test_dependencies_injection_with_decorator():
     assert f1(10, 22, c=10) == 42
 
     @dependencies1.inject
-    def f2(a, b, c_inject):
-        return a + b + c_inject
+    def f2(a, b, c_service):
+        return a + b + c_service
 
     assert f2(10, 22) == 74
 
     @dependencies2.inject
-    def f3(a, b, c_inject, d):
-        return a + b + c_inject + d
+    def f3(a, b, c_service, d):
+        return a + b + c_service + d
 
     assert f3(10, 22, d=10) == 85
 
-    assert f3(10, 22, c_inject=2, d=10) == 44
+    assert f3(10, 22, c_service=2, d=10) == 44
 
 
 def test_dependencies_injection_to_object():
-    dependencies = Dependencies(c=42)
+    dependencies = Dependencies()
+    dependencies['c'] = 42
 
     class C1(object):
         def __init__(self, a, b, c):
@@ -80,40 +85,43 @@ def test_dependencies_injection_to_object():
     assert dependencies(C1, 10, 22, c=10).value == 42
 
     class C2(object):
-        def __init__(self, a, b, c_inject):
-            self.value = a + b + c_inject
+        def __init__(self, a, b, c_service):
+            self.value = a + b + c_service
 
     assert dependencies(C2, 10, 22).value == 74
 
     class C3(object):
-        def __init__(self, a, b, c_inject, d):
-            self.value = a + b + c_inject + d
+        def __init__(self, a, b, c_service, d):
+            self.value = a + b + c_service + d
 
     assert dependencies(C3, 10, 22, d=10).value == 84
 
-    assert dependencies(C3, 10, 22, c_inject=2, d=10).value == 44
+    assert dependencies(C3, 10, 22, c_service=2, d=10).value == 44
 
 
 def test_dependencies_injection_with_postfix():
-    dependencies = Dependencies('service', c=42)
+    dependencies = Dependencies(dependencies_postfix='inject')
+    dependencies['c'] = 42
 
     assert dependencies(lambda a, b, c: a + b + c, 10, 22, c=10) == 42
-    assert dependencies(lambda a, b, c_service: a + b + c_service, 10, 22) == 74
-    assert dependencies(lambda a, b, c_service, d: a + b + c_service + d, 10, 22, d=10) == 84
-    assert dependencies(lambda a, b, c_service, d: a + b + c_service + d, 10, 22, c_service=2, d=10) == 44
+    assert dependencies(lambda a, b, c_inject: a + b + c_inject, 10, 22) == 74
+    assert dependencies(lambda a, b, c_inject, d: a + b + c_inject + d, 10, 22, d=10) == 84
+    assert dependencies(lambda a, b, c_inject, d: a + b + c_inject + d, 10, 22, c_inject=2, d=10) == 44
 
 
 def test_dependencies_injection_errors():
-    dependencies = Dependencies(other=10)
+    dependencies = Dependencies()
+    dependencies['other'] = 10
 
-    with pytest.raises(MissingDependency, match='^c_inject$'):
-        dependencies(lambda a, b, c_inject: a + b + c_inject, 10, 22)
+    with pytest.raises(MissingService, match='^c_service$'):
+        dependencies(lambda a, b, c_service: a + b + c_service, 10, 22)
 
-    assert dependencies(lambda a, b, c_service, d: a + b + c_service + d, 10, 22, c_service=2, d=10) == 44
+    assert dependencies(lambda a, b, c_inject, d: a + b + c_inject + d, 10, 22, c_inject=2, d=10) == 44
 
 
 def test_dependencies_injection_with_default_values():
-    dependencies = Dependencies(c=42)
+    dependencies = Dependencies()
+    dependencies['c'] = 42
 
-    assert dependencies(lambda a, d_inject=42: a + d_inject, 10) == 52
-    assert dependencies(lambda a, c_inject=10, d_inject=42: a + c_inject + d_inject, 10) == 94
+    assert dependencies(lambda a, d_service=42: a + d_service, 10) == 52
+    assert dependencies(lambda a, c_service=10, d_service=42: a + c_service + d_service, 10) == 94

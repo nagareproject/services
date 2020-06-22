@@ -14,9 +14,5 @@ class BadConfiguration(Exception):
     """Invalid configuration"""
 
 
-class MissingDependency(Exception):
-    """Missing dependency to inject"""
-
-
 class MissingService(Exception):
     """Missing service to inject"""
