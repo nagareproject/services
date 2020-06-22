@@ -22,7 +22,7 @@ from .config import validate
 from .reporters import PluginsReporter
 
 
-class Plugins(dict):
+class Plugins(object):
     ENTRY_POINTS = ''  # Section where to read the entry points
     CONFIG_SECTION = None  # Parent section of the plugins in the application configuration file
 
@@ -41,10 +41,10 @@ class Plugins(dict):
           - ``entry_points`` -- if defined, overloads the ``ENTRY_POINT`` class attribute
           - ``initial_config`` -- other configuration parameters not read from the configuration file
         """
-        super(Plugins, self).__init__()
-
         self.entry_points = entry_points or self.ENTRY_POINTS
         self.activated_by_default = activated_by_default
+
+        self.plugins = OrderedDict()
 
         # Load the plugins only if the ``config`` object exists
         if config is not None:
@@ -197,3 +197,33 @@ class Plugins(dict):
             plugins = [(dist, name, plugin, self.get(name.replace('.', '_'))) for name, (dist, plugin) in plugins.items()]
 
             PluginsReporter().report({'name', 'order', 'x'} | (activated_columns or set()), plugins)
+
+    def __len__(self):
+        return len(self.plugins)
+
+    def __iter__(self):
+        return iter(self.plugins)
+
+    def __setitem__(self, k, v):
+        self.plugins[k] = v
+
+    def __getitem__(self, k):
+        return self.plugins[k]
+
+    def __delitem__(self, k):
+        del self.plugins[k]
+
+    def get(self, k, v=None):
+        return self.plugins.get(k, v)
+
+    def update(self, d):
+        self.plugins.update(d)
+
+    def keys(self):
+        return list(self.plugins)
+
+    def values(self):
+        return self.plugins.values()
+
+    def items(self):
+        return self.plugins.items()
