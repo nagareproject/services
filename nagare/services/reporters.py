@@ -11,26 +11,22 @@
 import sys
 
 
-class PackagesReporter(object):
+class Reporter(object):
 
-    def __init__(self):
-        self.columns = [
-            ['Package', lambda dist, *args: dist.project_name, True],
-            ['Version', lambda dist, *args: dist.version, True],
-            ['Location', lambda dist, *args: dist.location, True]
-        ]
+    def __init__(self, columns=()):
+        self.columns = columns
 
-    def report(self, activated_columns, packages, display=None):
+    def report(self, activated_columns, to_report, display=None):
         display = display or (lambda m: sys.stdout.write(m + '\n'))
-        if not packages:
+        if not to_report:
             display('  <empty>')
             return
 
-        columns = [column for column in self.columns if column[0].lower() in activated_columns]
+        columns = [list(column) for column in self.columns if column[0].lower() in activated_columns]
 
         for column in columns:
             label, extract, left = column
-            padding = max(len(extract(*args)) for args in packages)
+            padding = max(len(extract(*args)) for args in to_report)
             column.append(max((padding, len(label))))
 
         labels = [(label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns]  # noqa: F812
@@ -39,7 +35,7 @@ class PackagesReporter(object):
         display('  ' + ' '.join(labels))
 
         rows = []
-        for args in packages:
+        for args in to_report:
             fields = []
             for label, extract, left, padding in columns:
                 field = extract(*args)
@@ -52,19 +48,32 @@ class PackagesReporter(object):
             display('  ' + ' '.join(fields))
 
 
+class PackagesReporter(Reporter):
+    COLUMNS = (
+        ('Package', lambda dist, *args: dist.project_name, True),
+        ('Version', lambda dist, *args: dist.version, True),
+        ('Location', lambda dist, *args: dist.location, True)
+    )
+
+    def __init__(self, columns=COLUMNS):
+        super(PackagesReporter, self).__init__(columns)
+
+
 class PluginsReporter(PackagesReporter):
 
     def __init__(self):
-        super(PluginsReporter, self).__init__()
-
-        self.columns = [
-            ['Order', lambda dist, name, plugin, activated, *args: str(plugin.LOAD_PRIORITY), False],
-            ['X', lambda dist, name, plugin, activated, *args: '-' if activated is None else '+', True],
-            ['Name', lambda dist, name, *args: name, True]
-        ] + self.columns + [
-            ['Module', lambda dist, name, plugin, activated, *args: self.extract_module(plugin), True],
-            ['Description', lambda dist, name, plugin, activated, *args: self.extract_description(plugin, activated), True]
-        ]
+        super(PluginsReporter, self).__init__((
+            ('Order', lambda dist, name, plugin, activated, *args: str(plugin.LOAD_PRIORITY), False),
+            ('X', lambda dist, name, plugin, activated, *args: '-' if activated is None else '+', True),
+            ('Name', lambda dist, name, *args: name, True)
+        ) + PackagesReporter.COLUMNS + (
+            ('Module', lambda dist, name, plugin, activated, *args: self.extract_module(plugin), True),
+            (
+                'Description',
+                lambda dist, name, plugin, activated, *args: self.extract_description(plugin, activated),
+                True
+            )
+        ))
 
     @staticmethod
     def extract_module(plugin):
