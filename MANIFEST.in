@@ -1,2 +1,3 @@
 exclude .gitignore
 exclude .gitlab-ci.yml
+prune nagare/services/tests
