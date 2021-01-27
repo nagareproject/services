@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import logging
+from collections import OrderedDict
 
 from . import plugins, exceptions
 
@@ -24,8 +25,12 @@ class Plugin(object):
     # Specification of the plugin configuration, read from the application
     # configuration file (http://www.voidspace.org.uk/python/configobj.html#validate)
     PLUGIN_CATEGORY = 'nagare.plugins'
-    CONFIG_SPEC = {}
+    CONFIG_SPEC = {'activated': 'boolean(default=True)'}
     LOAD_PRIORITY = 1000  # The plugins are loaded from lowest to highest priority value
+
+    @classmethod
+    def get_plugin_spec(cls):
+        return OrderedDict(sorted(cls.CONFIG_SPEC.items()))
 
     def __init__(self, name, dist, **config):
         self.name = name
@@ -41,11 +46,11 @@ class Plugin(object):
 
     @property
     def plugin_spec(self):
-        return self.CONFIG_SPEC
+        return self.get_plugin_spec()
 
     @property
     def plugin_config(self):
-        return self._plugin_config
+        return OrderedDict(sorted(self._plugin_config.items()), activated=True)
 
     def format_info(self, names=(), type_=None):
         yield ''
@@ -60,7 +65,7 @@ class PluginsPlugin(plugins.Plugins, Plugin):
 
 
 class SelectionPlugin(PluginsPlugin):
-    CONFIG_SPEC = {'type': 'string(default=None)'}
+    CONFIG_SPEC = dict(PluginsPlugin.CONFIG_SPEC, type='string(default=None)')
     WITH_INITIAL_CONFIG = True
 
     def __init__(self, name, dist, type, **config):
@@ -71,17 +76,11 @@ class SelectionPlugin(PluginsPlugin):
 
     @property
     def plugin_spec(self):
-        return dict(
-            self.plugin.plugin_spec,
-            **super(SelectionPlugin, self).plugin_spec
-        )
+        return dict(self.plugin.plugin_spec, **self.CONFIG_SPEC)
 
     @property
     def plugin_config(self):
-        return dict(
-            self.plugin.plugin_config,
-            **super(SelectionPlugin, self).plugin_config
-        )
+        return dict(self.plugin.plugin_config, type=self.type)
 
     @property
     def plugin(self):

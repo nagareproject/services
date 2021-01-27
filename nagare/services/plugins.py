@@ -62,6 +62,20 @@ class Plugins(object):
         """
         return plugin.LOAD_PRIORITY  # By default, the plugins are sorted on their ``LOAD_PRIORITY`` value
 
+    @property
+    def plugin_spec(self):
+        spec = OrderedDict((name, service.plugin_spec) for name, service in sorted(self.items()))
+        spec['activated'] = 'boolean(default=True)'
+
+        return spec
+
+    @property
+    def plugin_config(self):
+        config = OrderedDict((name, service.plugin_config) for name, service in sorted(self.items()))
+        config['activated'] = True
+
+        return config
+
     def iter_entry_points(self):
         """Read the entry points
 
