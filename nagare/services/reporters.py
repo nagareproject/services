@@ -55,8 +55,8 @@ class PackagesReporter(Reporter):
         ('Location', lambda dist, *args: dist.location, True)
     )
 
-    def __init__(self, columns=COLUMNS):
-        super(PackagesReporter, self).__init__(columns)
+    def __init__(self, columns=None):
+        super(PackagesReporter, self).__init__(columns or self.COLUMNS)
 
 
 class PluginsReporter(PackagesReporter):
