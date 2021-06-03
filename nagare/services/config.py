@@ -34,7 +34,13 @@ class TemplateInterpolation(configobj.TemplateInterpolation):
     def interpolate(self, key, value):
         self.key = key
 
-        return super(TemplateInterpolation, self).interpolate(key, value)
+        new_value = super(TemplateInterpolation, self).interpolate(key, value)
+        if new_value != value:
+            value, comment =  self.section.main._handle_value(new_value)
+            if isinstance(value, (str, type(''))):
+                value += comment or ''
+
+        return value
 
     def _parse_match(self, match):
         groups = match.groupdict()
