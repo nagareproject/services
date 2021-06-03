@@ -36,7 +36,7 @@ class TemplateInterpolation(configobj.TemplateInterpolation):
 
         new_value = super(TemplateInterpolation, self).interpolate(key, value)
         if new_value != value:
-            value, comment =  self.section.main._handle_value(new_value)
+            value, comment = self.section.main._handle_value(new_value)
             if isinstance(value, (str, type(''))):
                 value += comment or ''
 
