@@ -21,17 +21,8 @@ from . import exceptions, plugins
 
 
 class Services(plugins.Plugins):
-    ENTRY_POINTS = 'services'  # Default section of the service entry points
-    CONFIG_SECTION = 'services'  # Default configuration section of the services
 
-    def __init__(
-            self,
-            config=None, config_section=None,
-            entry_points=None,
-            activated_by_default=True,
-            dependencies_postfix='service',
-            **initial_config
-    ):
+    def __init__(self, activated_by_default=True, dependencies_postfix='service'):
         """Eager / lazy loading of the services
 
         In:
@@ -42,9 +33,9 @@ class Services(plugins.Plugins):
           - ``initial_config`` -- other configuration parameters not read from the configuration file
         """
         self.postfix = '_' + dependencies_postfix
-        super(Services, self).__init__(config, config_section, entry_points, activated_by_default, **initial_config)
+        super(Services, self).__init__(activated_by_default)
 
-    def _load_plugin(self, name, dist, service_cls, initial_config, config, *args, **kw):
+    def _load_plugin(self, name_, dist, service_cls, activated=None, **config):
         """Load and activate a service
 
         In:
@@ -53,18 +44,14 @@ class Services(plugins.Plugins):
         Returns:
           - the service
         """
-        if hasattr(service_cls, 'WITH_INITIAL_CONFIG'):
-            args = (initial_config,) + args
+        service_cls.PLUGIN_CATEGORY = self.ENTRY_POINTS
+        return self(service_cls, name_, dist, **config)
 
-        config = dict(config, **kw)
+    def load_services(self, name, config=None, global_config=None, validate=False, entry_points=None):
+        return self.load_plugins(name, config, global_config, validate, entry_points)
 
-        service_cls.PLUGIN_CATEGORY = 'nagare.services'
-        service = self(service_cls, name, dist, *args, **config)
-
-        return service
-
-    def report(self, title='Services', activated_columns=None, criterias=lambda _: True):
-        super(Services, self).report(title, activated_columns, criterias)
+    def report(self, name, entry_points, title='Services', activated_columns=None, criterias=lambda _: True):
+        super(Services, self).report(name, entry_points, title, activated_columns, criterias)
 
     def get_dependency(self, name, is_mandatory=True):
         """Retrieve a dependency from this registry

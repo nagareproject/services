@@ -12,12 +12,12 @@
 import os
 
 import pkg_resources
-from configobj import ConfigObj
+from nagare.config import config_from_dict, config_from_file
 
 from nagare.services import plugins, plugin
 
 
-CONFIG = {
+CONFIG = config_from_dict({
     'my_plugins': {
         'test1': {
             'value1': '20',
@@ -28,22 +28,27 @@ CONFIG = {
             'value3': '$greeting world!'
         }
     }
-}
+})
 
 
 class DummyPlugins(plugins.Plugins):
     ENTRY_POINTS = 'nagare.plugins.test1'
 
-    def iter_entry_points(self):
+    @classmethod
+    def iter_entry_points(cls, name, entry_points, config):
+        if not entry_points:
+            return []
+
         egg_path = os.path.join(os.path.dirname(__file__), 'entry_points')
-        return list(pkg_resources.WorkingSet([egg_path]).iter_entry_points(self.entry_points))
+        return [(entry.name, entry) for entry in pkg_resources.WorkingSet([egg_path]).iter_entry_points(entry_points)]
 
 
 class DummyPlugin1(plugin.Plugin):
-    CONFIG_SPEC = {
-        'value1': 'integer',
-        'value2': 'string'
-    }
+    CONFIG_SPEC = dict(
+        plugin.Plugin.CONFIG_SPEC,
+        value1='integer',
+        value2='string'
+    )
     CATEGORY = 'TEST1'
     TEST_VALUE = 42
 
@@ -54,11 +59,12 @@ class DummyPlugin1(plugin.Plugin):
 
 
 class DummyPlugin2(plugin.Plugin):
-    CONFIG_SPEC = {
-        'value1': 'integer(default=10)',
-        'value2': 'string(default="$root/b.txt")',
-        'value3': 'string'
-    }
+    CONFIG_SPEC = dict(
+        plugin.Plugin.CONFIG_SPEC,
+        value1='integer(default=10)',
+        value2='string(default="$root/b.txt")',
+        value3='string'
+    )
     CATEGORY = 'TEST2'
     TEST_VALUE = 43
     LOAD_PRIORITY = 2000
@@ -70,21 +76,27 @@ class DummyPlugin2(plugin.Plugin):
 
 
 class PluginsOfPlugins(plugin.PluginsPlugin):
-    CONFIG_SPEC = {'value1': 'integer'}
-
     ENTRY_POINTS = 'nagare.services.auth'
-    CONFIG_SECTION = 'authentication'
+    CONFIG_SPEC = dict(
+        plugin.PluginsPlugin.CONFIG_SPEC,
+        value1='integer'
+    )
 
     def __init__(self, name, dist, value1, **config):
         super(PluginsOfPlugins, self).__init__(name, dist, **config)
+        self.load_plugins(name, config)
 
         self.name = name
         self.dist = dist
         self.value1 = value1
 
-    def iter_entry_points(self):
+    @classmethod
+    def iter_entry_points(cls, name, entry_points, config):
+        if not entry_points:
+            return []
+
         egg_path = os.path.join(os.path.dirname(__file__), 'entry_points')
-        return list(pkg_resources.WorkingSet([egg_path]).iter_entry_points(self.entry_points))
+        return [(entry.name, entry) for entry in pkg_resources.WorkingSet([egg_path]).iter_entry_points(entry_points)]
 
 
 class UserPlugin(plugin.Plugin):
@@ -96,7 +108,11 @@ class UserPlugin(plugin.Plugin):
 
 
 class LdapPlugin(plugin.Plugin):
-    CONFIG_SPEC = {'host': 'string', 'port': 'integer'}
+    CONFIG_SPEC = dict(
+        plugin.Plugin.CONFIG_SPEC,
+        host='string',
+        port='integer'
+    )
 
     def __init__(self, name, dist, host, port):
         super(LdapPlugin, self).__init__(name, dist, host=host, port=port)
@@ -105,24 +121,16 @@ class LdapPlugin(plugin.Plugin):
         self.host = host
         self.port = port
 
-
-class Selection(plugin.SelectionPlugin):
-    ENTRY_POINTS = 'nagare.services.auth'
-
-    def iter_entry_points(self):
-        egg_path = os.path.join(os.path.dirname(__file__), 'entry_points')
-        return list(pkg_resources.WorkingSet([egg_path]).iter_entry_points(self.entry_points))
-
 # --------------------------------------------------------------------------------------------------------------------
 
 
 def test_discover_plugin1():
     repository = DummyPlugins()
 
-    entries = repository.iter_entry_points()
+    entries = repository.iter_entry_points(None, repository.ENTRY_POINTS, {})
     assert len(entries) == 2
 
-    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins()]
+    plugins = [(name, cls) for name, entry, cls in repository.load_entry_points(entries, {})]
     ((test_name1, test_plugin1), (test_name2, test_plugin2)) = plugins
 
     assert test_name1 == 'test1'
@@ -130,120 +138,77 @@ def test_discover_plugin1():
     assert test_name2 == 'test2'
     assert test_plugin2 is DummyPlugin2
 
-    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins({'test1', 'test2'})]
-    assert len(plugins) == 2
-    (test_name1, test_plugin1), (test_name2, test_plugin2) = plugins
-
-    assert test_name1 == 'test1'
-    assert test_plugin1 is DummyPlugin1
-    assert test_name2 == 'test2'
-    assert test_plugin2 is DummyPlugin2
-
-    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins({'test1'})]
-    assert len(plugins) == 1
-    ((test_name1, test_plugin1),) = plugins
-
-    assert test_name1 == 'test1'
-    assert test_plugin1 is DummyPlugin1
-
-    plugins = [(entry.name, cls) for entry, cls in repository.load_activated_plugins({'test2'})]
-    assert len(plugins) == 1
-    ((test_name2, test_plugin2),) = plugins
-
-    assert test_name2 == 'test2'
-    assert test_plugin2 is DummyPlugin2
-
 
 def test_load_priority():
     repository = DummyPlugins()
-    plugins = [entry.name for entry, _ in repository.load_activated_plugins()]
 
-    assert list(plugins) == ['test1', 'test2']
+    entries = repository.iter_entry_points(None, repository.ENTRY_POINTS, {})
+    assert len(entries) == 2
 
-    repository = DummyPlugins(entry_points='nagare.plugins.test2')
-    plugins = [entry.name for entry, _ in repository.load_activated_plugins()]
+    plugins = [name for name, entry, cls in repository.load_entry_points(entries, {})]
 
-    assert list(plugins) == ['test1', 'test2']
+    assert plugins == ['test1', 'test2']
 
+    class Plugins(DummyPlugins):
+        ENTRY_POINTS = 'nagare.plugins.test2'
 
-def test_read_config1():
-    repository = DummyPlugins()
-    spec = {entry.name: plugin.CONFIG_SPEC for entry, plugin in repository.load_activated_plugins()}
-    conf = repository.read_config(spec, CONFIG, 'my_plugins', root='/tmp/test', greeting='Hello')
+    repository = Plugins()
 
-    assert len(conf['test1']) == 2
+    entries = repository.iter_entry_points(None, repository.ENTRY_POINTS, {})
+    assert len(entries) == 2
 
-    assert conf['test1']['value1'] == 20
-    assert conf['test1']['value2'] == '/tmp/test/a.txt'
+    plugins = [name for name, entry, cls in repository.load_entry_points(entries, {})]
 
-    assert len(conf['test2']) == 3
-    assert conf['test2']['value1'] == 10
-    assert conf['test2']['value2'] == '/tmp/test/b.txt'
-    assert conf['test2']['value3'] == 'Hello world!'
-
-
-def test_read_config2():
-    repository = DummyPlugins()
-    spec = {entry.name: plugin.CONFIG_SPEC for entry, plugin in repository.load_activated_plugins()}
-    conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    conf = repository.read_config(spec, ConfigObj(conf_filename), 'my_plugins', root='/tmp/test', greeting='Hello')
-
-    assert len(conf['test1']) == 2
-
-    assert conf['test1']['value1'] == 20
-    assert conf['test1']['value2'] == '/tmp/test/a.txt'
-
-    assert len(conf['test2']) == 3
-    assert conf['test2']['value1'] == 10
-    assert conf['test2']['value2'] == '/tmp/test/b.txt'
-    assert conf['test2']['value3'] == 'Hello world!'
+    assert plugins == ['test1', 'test2']
 
 
 def test_load1():
-    class Plugins(DummyPlugins):
-        CONFIG_SECTION = 'my_plugins'
-
-    repository = Plugins()
-    repository.load_plugins(CONFIG, root='/tmp/test', greeting='Hello')
+    repository = DummyPlugins()
+    repository.load_plugins(None, CONFIG['my_plugins'], {'root': '/tmp/test', 'greeting': 'Hello'}, True)
     assert len(repository) == 2
 
     (plugin1_name, plugin1), (plugin2_name, plugin2) = repository.items()
 
     assert plugin1_name == 'test1'
     assert plugin1.dist.project_name == 'nagare-services'
-    assert plugin1.plugin_config == {'activated': True, 'value1': 20, 'value2': '/tmp/test/a.txt'}
+    assert plugin1.plugin_config == {'activated': 'on', 'value1': 20, 'value2': '/tmp/test/a.txt'}
 
     assert plugin2_name == 'test2'
     assert plugin2.name == 'test2'
     assert plugin2.dist.project_name == 'nagare-services'
-    assert plugin2.plugin_config == {'activated': True, 'value1': 10, 'value2': '/tmp/test/b.txt', 'value3': 'Hello world!'}
+    assert plugin2.plugin_config == {'activated': 'on', 'value1': 10, 'value2': '/tmp/test/b.txt', 'value3': 'Hello world!'}
 
 
 def test_load2():
+
     class Plugins(DummyPlugins):
         ENTRY_POINTS = 'nagare.plugins.test1'
-        CONFIG_SECTION = 'my_plugins'
 
     repository = Plugins()
-    conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    repository.load_plugins(ConfigObj(conf_filename), root='/tmp/test', greeting='Hello')
+    config = config_from_file(os.path.join(os.path.dirname(__file__), 'plugins.cfg'))
+    repository.load_plugins(None, config['my_plugins'], {'root': '/tmp/test', 'greeting': 'Hello'}, True)
     assert len(repository) == 2
 
     (plugin1_name, plugin1), (plugin2_name, plugin2) = repository.items()
 
     assert plugin1_name == 'test1'
     assert plugin1.dist.project_name == 'nagare-services'
-    assert plugin1.plugin_config == {'activated': True, 'value1': 20, 'value2': '/tmp/test/a.txt'}
+    assert plugin1.plugin_config == {'activated': 'on', 'value1': 20, 'value2': '/tmp/test/a.txt'}
 
     assert plugin2_name == 'test2'
     assert plugin2.name == 'test2'
     assert plugin2.dist.project_name == 'nagare-services'
-    assert plugin2.plugin_config == {'activated': True, 'value1': 10, 'value2': '/tmp/test/b.txt', 'value3': 'Hello world!'}
+    assert plugin2.plugin_config == {'activated': 'on', 'value1': 10, 'value2': '/tmp/test/b.txt', 'value3': 'Hello world!'}
 
 
 def test_load3():
-    conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    repository = DummyPlugins(conf_filename, 'my_plugins2', 'nagare.plugins.test3', default_email='admin@localhost')
+
+    class Plugins(DummyPlugins):
+        ENTRY_POINTS = 'nagare.plugins.test3'
+
+    repository = Plugins()
+    config = config_from_file(os.path.join(os.path.dirname(__file__), 'plugins.cfg'))
+    repository.load_plugins(None, config['my_plugins2'], {'default_email': 'admin@localhost'}, validate=True)
 
     assert len(repository) == 1
     (name, plugins_of_plugins) = next(iter(repository.items()))
@@ -263,31 +228,3 @@ def test_load3():
     assert users.name == 'user'
     assert users.dist.project_name == 'nagare-services'
     assert users.default_user == 'John Doe <admin@localhost>'
-
-
-def test_load4():
-    conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    repository = DummyPlugins(conf_filename, 'test4', 'nagare.plugins.test4')
-
-    assert len(repository) == 1
-    (name, selection) = next(iter(repository.items()))
-
-    assert name == 'selection'
-    plugin = selection.plugin
-    assert isinstance(plugin, UserPlugin)
-    assert plugin.name == 'user'
-    assert plugin.dist.project_name == 'nagare-services'
-    assert plugin.default_user == 'John Doe'
-
-    conf_filename = os.path.join(os.path.dirname(__file__), 'plugins.cfg')
-    repository = DummyPlugins(conf_filename, 'test5', 'nagare.plugins.test4')
-
-    assert len(repository) == 1
-    (name, selection) = next(iter(repository.items()))
-
-    assert name == 'selection'
-    plugin = selection.plugin
-    assert plugin.name == 'ldap'
-    assert plugin.dist.project_name == 'nagare-services'
-    assert plugin.host == 'localhost'
-    assert plugin.port == 389

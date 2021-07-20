@@ -15,40 +15,24 @@ The plugins are read from an entry point and configured from a file
 
 from collections import OrderedDict
 
-import configobj
 import pkg_resources
+from nagare.config import config_from_dict
 
-from .config import validate
 from .reporters import PluginsReporter
 
 
 class Plugins(object):
-    ENTRY_POINTS = ''  # Section where to read the entry points
-    CONFIG_SECTION = None  # Parent section of the plugins in the application configuration file
+    CONFIG_SPEC = {'activated': 'boolean(default=True)'}
+    ENTRY_POINTS = None  # Section where to read the entry points
 
-    def __init__(
-            self,
-            config=None, config_section=None,
-            entry_points=None,
-            activated_by_default=True,
-            **initial_config
-    ):
+    def __init__(self, activated_by_default=True):
         """Eager / lazy loading of the plugins
 
         In:
-          - ``config`` -- ``ConfigObj`` configuration object
-          - ``config_section`` -- if defined, overloads the ``CONFIG_SECTION`` class attribute
           - ``entry_points`` -- if defined, overloads the ``ENTRY_POINT`` class attribute
-          - ``initial_config`` -- other configuration parameters not read from the configuration file
         """
-        self.entry_points = entry_points or self.ENTRY_POINTS
         self.activated_by_default = activated_by_default
-
         self.plugins = OrderedDict()
-
-        # Load the plugins only if the ``config`` object exists
-        if config is not None:
-            self.load_plugins(config, config_section, **initial_config)
 
     @staticmethod
     def load_order(plugin):
@@ -62,21 +46,8 @@ class Plugins(object):
         """
         return plugin.LOAD_PRIORITY  # By default, the plugins are sorted on their ``LOAD_PRIORITY`` value
 
-    @property
-    def plugin_spec(self):
-        spec = OrderedDict((name, service.plugin_spec) for name, service in sorted(self.items()))
-        spec['activated'] = 'boolean(default=True)'
-
-        return spec
-
-    @property
-    def plugin_config(self):
-        config = OrderedDict((name, service.plugin_config) for name, service in sorted(self.items()))
-        config['activated'] = True
-
-        return config
-
-    def iter_entry_points(self):
+    @classmethod
+    def iter_entry_points(cls, name, entry_points, config):
         """Read the entry points
 
         In:
@@ -85,51 +56,16 @@ class Plugins(object):
         Return:
           - the entry points
         """
-        return list(pkg_resources.iter_entry_points(self.entry_points))
+        return [(entry.name, entry) for entry in pkg_resources.iter_entry_points(entry_points)] if entry_points else []
 
-    def load_activated_plugins(self, activations=None):
-        entries = self.iter_entry_points()
+    @classmethod
+    def load_entry_points(cls, entry_points, config):
+        plugins = [(name, entry, entry.load()) for name, entry in entry_points]
+        plugins.sort(key=lambda plugin: cls.load_order(plugin[2]))
 
-        plugins = [(entry, entry.load()) for entry in entries if (activations is None) or (entry.name in activations)]
-        plugins.sort(key=lambda plugin: self.load_order(plugin[1]))
+        return list(OrderedDict((name, (name, entry, plugin)) for name, entry, plugin in plugins).values())
 
-        return list(OrderedDict((entry.name, (entry, plugin)) for entry, plugin in plugins).values())
-
-    @staticmethod
-    def merge_initial_config(config, **initial_config):
-        """Merge some variables into the plugins config
-
-        In:
-
-          - ``config`` -- ``ConfigObj`` configuration object of the plugins configuration
-          - ``initial_config`` -- variables to merge into the config
-        """
-        config.merge(initial_config)
-
-    def read_config(self, spec, config, config_section, interpolation='TemplateWithDefaults', **initial_config):
-        """Read and validate all the plugins configurations
-
-        In:
-          - ``plugins`` -- the plugins
-          - ``config`` -- ``ConfigObj`` configuration object
-          - ``config_section`` -- parent section of the plugins in the application configuration file
-          - ``initial_config`` -- other configuration parameters not read from the configuration file
-
-        Return:
-          - the ``ConfigObj`` validated section of the plugins configurations
-        """
-        if config_section:
-            spec = {config_section: spec}
-
-        plugins_conf = configobj.ConfigObj(config, configspec=spec, interpolation=interpolation)
-
-        self.merge_initial_config(plugins_conf, **initial_config)
-        validate(plugins_conf, getattr(config, 'filename', None))
-
-        return (plugins_conf[config_section] if config_section else plugins_conf).dict()
-
-    @staticmethod
-    def _load_plugin(name, dist, plugin_cls, initial_config, plugin_config, *args, **kw):
+    def _load_plugin(self, name_, dist, plugin_cls, activated=None, **config):
         """Load and activate a plugin
 
         In:
@@ -138,10 +74,10 @@ class Plugins(object):
         Returns:
           - the plugin
         """
-        return plugin_cls(name, dist, *args, **dict(plugin_config, **kw))
+        return plugin_cls(name_, dist, **config)
 
-    def load_plugins(self, config, config_section=None, **initial_config):
-        """Load, configure, activate and register the plugins
+    def load_plugins(self, name, config=None, global_config=None, validate=False, entry_points=None):
+        """Load, configure, activate and register the plugin
 
         In:
           - ``config`` -- ``ConfigObj`` configuration object
@@ -149,40 +85,109 @@ class Plugins(object):
           - ``entry_points`` -- if defined, overloads the ``ENTRY_POINT`` class attribute
           - ``initial_config`` -- other configuration parameters not read from the configuration file
         """
-        entries = self.iter_entry_points()
-        activations = self.read_config(
-            {entry.name: {'activated': 'boolean(default=%s)' % self.activated_by_default} for entry in entries},
-            config, self.CONFIG_SECTION if config_section is None else config_section,
-            **initial_config
-        )
-        activated_plugins = {entry.name for entry in entries if activations[entry.name]['activated']}
+        entry_points = entry_points or self.ENTRY_POINTS
+        entries = self.iter_entry_points(name, entry_points, config)
 
-        plugins = self.load_activated_plugins(activated_plugins)
+        if config is None:
+            config = {}
+            plugins = self.load_entry_points(entries, config)
+        else:
+            activated = str(int(self.activated_by_default))
+            entries = [
+                (plugin_name, entry) for plugin_name, entry in entries
+                if config.get(plugin_name, {}).get('activated', activated) in ('true', 'on', '1', True)
+            ]
+            plugins = self.load_entry_points(entries, config)
 
-        config = self.read_config(
-            {entry.name: plugin.CONFIG_SPEC for entry, plugin in plugins},
-            config, self.CONFIG_SECTION if config_section is None else config_section,
-            **initial_config
-        )
+            if validate:
+                def extract_infos(spec):
+                    r = {}
 
-        for entry, plugin in plugins:
-            name = entry.name
+                    for f, args in spec:
+                        name, config_spec, children = f(*args)
+                        r[name] = dict(config_spec, **extract_infos(children))
 
+                    return r
+
+                spec = self.walk1(name, entry_points, config)
+                spec = config_from_dict(extract_infos(spec))
+
+                config.merge_defaults(spec)
+                config.interpolate(global_config)
+                config.validate(spec)
+                config = config.dict()
+
+        for name, entry, plugin in plugins:
             try:
-                plugin_config = config[name]
-                plugin_config.pop('activated', None)
-
-                plugin_instance = self._load_plugin(
-                    name, entry.dist,
-                    plugin,
-                    initial_config, plugin_config
-                )
-
+                plugin_config = config.get(name, {})
+                plugin_instance = self._load_plugin(name, entry.dist, plugin, **plugin_config)
                 if plugin_instance is not None:
                     self[name.replace('.', '_')] = plugin_instance
             except Exception:
                 print("'%s' can't be loaded" % name)
                 raise
+
+        return self
+
+    @staticmethod
+    def _walk(o, name, entry_points, config, get_children):
+        entries = o.iter_entry_points(name, entry_points, config)
+        plugins = o.load_entry_points(entries, config)
+        for name, entry, cls in plugins:
+            plugin = get_children(o, name, cls)
+
+            if hasattr(plugin, '_walk'):
+                children = plugin._walk(
+                    plugin,
+                    name, plugin.ENTRY_POINTS, config.get(name, {}),
+                    get_children
+                )
+            else:
+                children = []
+
+            f = getattr(
+                cls,
+                'get_plugin_spec',
+                lambda entry, name, cls, plugin, children: (name, cls.CONFIG_SPEC, children)
+            )
+            yield f, (entry, name, cls, plugin, children)
+
+    @classmethod
+    def walk1(cls, name, entry_points, config,):
+        return cls._walk(cls, name, entry_points, config, lambda cls, name, plugin: plugin)
+
+    def walk2(self, name, entry_points):
+        return self._walk(self, name, entry_points, {}, lambda o, name, plugin: o.get(name))
+
+    def report(self, name, title='Plugins', activated_columns=None, criterias=lambda *args: True, entry_points=None):
+
+        def extract_infos(plugins, added, level, ancestors):
+            infos = []
+            for plugin in plugins:
+                f, (entry, name, cls, plugin, children) = plugin
+                fullname = ancestors + (name,)
+
+                if (fullname not in added) and criterias(entry, fullname, name, cls, plugin):
+                    infos.append((entry.dist, level, name, cls, plugin))
+                    added.add(fullname)
+
+                for info in extract_infos(children, added, level + 1, fullname):
+                    if (fullname not in added):
+                        infos.append((entry.dist, level, name, cls, plugin))
+                        added.add(fullname)
+
+                    infos.append(info)
+
+            return infos
+
+        plugins = extract_infos(self.walk2(name, entry_points or self.ENTRY_POINTS), set(), 0, ())
+
+        print(title + ':\n')
+
+        if not plugins:
+            print('  <empty>')
+        else:
+            PluginsReporter().report({'name', 'order', 'x'} | (activated_columns or set()), plugins, False)
 
     def copy(self, **kw):
         """Create a new copy of this registry
@@ -195,22 +200,6 @@ class Plugins(object):
         new.update(kw)
 
         return new
-
-    def report(self, title='Plugins', activated_columns=None, criterias=lambda plugins, name, plugin: True):
-        plugins = self.load_activated_plugins()
-
-        plugins = [(entry.name, entry.dist, plugin) for entry, plugin in plugins]
-        plugins = filter(lambda plugin: criterias(self, plugin[0], plugin[2]), plugins)
-
-        print(title + ':\n')
-
-        if not plugins:
-            print('  <empty>')
-        else:
-            plugins = {name: (dist, plugin) for name, dist, plugin in plugins}
-            plugins = [(dist, name, plugin, self.get(name.replace('.', '_'))) for name, (dist, plugin) in plugins.items()]
-
-            PluginsReporter().report({'name', 'order', 'x'} | (activated_columns or set()), plugins)
 
     def __len__(self):
         return len(self.plugins)

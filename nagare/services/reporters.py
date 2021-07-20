@@ -16,7 +16,7 @@ class Reporter(object):
     def __init__(self, columns=()):
         self.columns = columns
 
-    def report(self, activated_columns, to_report, display=None):
+    def report(self, activated_columns, to_report, sorted, display=None):
         display = display or (lambda m: sys.stdout.write(m + '\n'))
         if not to_report:
             display('  <empty>')
@@ -44,7 +44,10 @@ class Reporter(object):
 
             rows.append(fields)
 
-        for fields in sorted(rows):
+        if sorted:
+            rows.sort()
+
+        for fields in rows:
             display('  ' + ' '.join(fields))
 
 
@@ -63,14 +66,14 @@ class PluginsReporter(PackagesReporter):
 
     def __init__(self):
         super(PluginsReporter, self).__init__((
-            ('Order', lambda dist, name, plugin, activated, *args: str(plugin.LOAD_PRIORITY), False),
-            ('X', lambda dist, name, plugin, activated, *args: '-' if activated is None else '+', True),
-            ('Name', lambda dist, name, *args: name, True)
+            ('Name', lambda dist, level, name, plugin, activated: ' ' * (4 * level) + name, True),
+            ('X', lambda dist, level, name, plugin, activated: '-' if activated is None else '+', True),
+            ('Order', lambda dist, level, name, plugin, activated: str(plugin.LOAD_PRIORITY), False),
         ) + PackagesReporter.COLUMNS + (
-            ('Module', lambda dist, name, plugin, activated, *args: self.extract_module(plugin), True),
+            ('Module', lambda dist, level, name, plugin, activated: self.extract_module(plugin), True),
             (
                 'Description',
-                lambda dist, name, plugin, activated, *args: self.extract_description(plugin, activated),
+                lambda dist, level, name, plugin, activated: self.extract_description(plugin, activated),
                 True
             )
         ))

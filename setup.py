@@ -33,5 +33,5 @@ setup(
     zip_safe=False,
     setup_requires=['setuptools_scm'],
     use_scm_version=True,
-    install_requires=['configobj']
+    install_requires=['nagare-config']
 )

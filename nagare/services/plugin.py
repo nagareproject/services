@@ -13,9 +13,10 @@
 from __future__ import absolute_import
 
 import logging
-from collections import OrderedDict
 
-from . import plugins, exceptions
+from nagare.config import config_from_dict, ParameterError
+
+from . import plugins
 
 
 class Plugin(object):
@@ -28,13 +29,10 @@ class Plugin(object):
     CONFIG_SPEC = {'activated': 'boolean(default=True)'}
     LOAD_PRIORITY = 1000  # The plugins are loaded from lowest to highest priority value
 
-    @classmethod
-    def get_plugin_spec(cls):
-        return OrderedDict(sorted(cls.CONFIG_SPEC.items()))
-
-    def __init__(self, name, dist, **config):
-        self.name = name
-        self._plugin_config = config
+    def __init__(self, name_, dist, **config):
+        self.name = name_
+        config['activated'] = 'on'
+        self.plugin_config = config
 
     @property
     def logger(self):
@@ -44,66 +42,65 @@ class Plugin(object):
     def logger(self, logger):
         pass
 
-    @property
-    def plugin_spec(self):
-        return self.get_plugin_spec()
-
-    @property
-    def plugin_config(self):
-        return OrderedDict(sorted(self._plugin_config.items()), activated=True)
-
-    def format_info(self, names=(), type_=None):
-        yield ''
-
 
 class PluginsPlugin(plugins.Plugins, Plugin):
     """The plugin is itself a plugins registry"""
 
-    def __init__(self, name, dist, **config):
-        plugins.Plugins.__init__(self, config, '')
-        Plugin.__init__(self, name, dist)
+    def __init__(self, name_, dist, **config):
+        plugins.Plugins.__init__(self)
+        Plugin.__init__(self, name_, dist, **config)
 
 
 class SelectionPlugin(PluginsPlugin):
-    CONFIG_SPEC = dict(PluginsPlugin.CONFIG_SPEC, type='string(default=None)')
-    WITH_INITIAL_CONFIG = True
+    SELECTOR = 'type'
+    CONFIG_SPEC = dict({SELECTOR: 'string'}, **PluginsPlugin.CONFIG_SPEC)
 
-    def __init__(self, name, dist, type, **config):
-        self.type = type
+    def __init__(self, name_, dist, type, **config):
+        self.selector = config[self.SELECTOR] = type
+        super(SelectionPlugin, self).__init__(name_, dist, **config)
+        self.load_plugins(name_, config_from_dict({self.SELECTOR: type, name_: config}))
 
-        config = {type: config} if type else {}
-        super(SelectionPlugin, self).__init__(name, dist, **config)
+    @classmethod
+    def iter_entry_points(cls, name, entry_points, config=None):
+        """Read the entry points
 
-    @property
-    def plugin_spec(self):
-        return dict(self.plugin.plugin_spec, **self.CONFIG_SPEC)
+        In:
+          - ``entry_points`` -- section where to read the entry points
 
-    @property
-    def plugin_config(self):
-        return dict(self.plugin.plugin_config, type=self.type)
+        Return:
+          - the entry points
+        """
+        if not config:
+            return []
+
+        entries = dict(PluginsPlugin.iter_entry_points(name, entry_points, config))
+
+        selector = config.get(cls.SELECTOR)
+        if not selector:
+            raise ParameterError('required', sections=[name], name=cls.SELECTOR)
+
+        entry = entries.get(selector)
+        if not entry:
+            choices = map("'{}'".format, entries)
+            error = "invalid value '{}', can only be {}".format(selector, ' or '.join(choices))
+
+            raise ParameterError(error, sections=[name], name=cls.SELECTOR)
+
+        return [(name, entry)]
+
+    @staticmethod
+    def get_plugin_spec(entry, name, cls, plugin, children):
+        f, args = next(children, (lambda: (name, {}, []), ()))
+        _, spec, children = f(*args)
+
+        return name, dict(cls.CONFIG_SPEC, **spec), children
 
     @property
     def plugin(self):
-        try:
-            return self[self.type.replace('.', '_')]
-        except KeyError:
-            self.raise_not_found()
+        return list(self.values())[0]
 
-    def raise_not_found(self):
-        error = 'section "[{}]", parameter "{}": '.format(self.name, list(self.CONFIG_SPEC)[0])
-        error += 'missing parameter' if self.type is None else'invalid value `{}`'.format(self.type)
-        exc = exceptions.BadConfiguration(error)
-        exc.__cause__ = None
+    def _load_plugin(self, name_, dist, plugin_cls, **config):
+        config = config.copy()
+        del config[self.SELECTOR]
 
-        raise exc
-
-    def load_activated_plugins(self, activations=None):
-        return super(SelectionPlugin, self).load_activated_plugins({self.type})
-
-    def format_info(self, names=()):
-        if self.plugin:
-            for line in self.plugin.format_info(
-                names + (self.name,),
-                next(iter(self.CONFIG_SPEC))
-            ):
-                yield line
+        return super(SelectionPlugin, self, name_, dist, plugin_cls, **config)
