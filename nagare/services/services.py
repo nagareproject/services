@@ -50,6 +50,18 @@ class Services(plugins.Plugins):
     def load_services(self, name, config=None, global_config=None, validate=False, entry_points=None):
         return self.load_plugins(name, config, global_config, validate, entry_points)
 
+    def get_service(self, service_path):
+        return functools.reduce(lambda d, name: d[name], service_path, self)
+
+    def find_services(self, criterias=lambda service: True):
+        services = []
+        for service in self.values():
+            children = service.find_services(criterias) if hasattr(service, 'find_services') else []
+            if criterias(service) or children:
+                services.append((service, children))
+
+        return services
+
     def report(self, name, entry_points, title='Services', activated_columns=None, criterias=lambda _: True):
         super(Services, self).report(name, entry_points, title, activated_columns, criterias)
 
