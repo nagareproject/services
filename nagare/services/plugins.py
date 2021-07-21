@@ -122,7 +122,7 @@ class Plugins(object):
                 plugin_config = config.get(name, {})
                 plugin_instance = self._load_plugin(name, entry.dist, plugin, **plugin_config)
                 if plugin_instance is not None:
-                    self[name.replace('.', '_')] = plugin_instance
+                    self[name] = plugin_instance
             except Exception:
                 print("'%s' can't be loaded" % name)
                 raise
