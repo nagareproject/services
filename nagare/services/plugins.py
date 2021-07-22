@@ -92,10 +92,10 @@ class Plugins(object):
             config = {}
             plugins = self.load_entry_points(entries, config)
         else:
-            activated = str(int(self.activated_by_default))
+            spec = config_from_dict({'activated': 'boolean(default={})'.format(self.activated_by_default)})
             entries = [
                 (plugin_name, entry) for plugin_name, entry in entries
-                if config.get(plugin_name, {}).get('activated', activated).lower() in ('true', 'on', 'yes', '1')
+                if config_from_dict(config.get(plugin_name, {})).merge_defaults(spec).validate(spec)['activated']
             ]
             plugins = self.load_entry_points(entries, config)
 
