@@ -95,7 +95,7 @@ class Plugins(object):
             activated = str(int(self.activated_by_default))
             entries = [
                 (plugin_name, entry) for plugin_name, entry in entries
-                if config.get(plugin_name, {}).get('activated', activated) in ('true', 'on', '1', True)
+                if config.get(plugin_name, {}).get('activated', activated).lower() in ('true', 'on', 'yes', '1')
             ]
             plugins = self.load_entry_points(entries, config)
 
