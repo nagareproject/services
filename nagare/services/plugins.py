@@ -109,9 +109,8 @@ class Plugins(object):
 
                     return r
 
-                spec = self.walk1(name, entry_points, config)
+                spec = self.walk1(name, entry_points, config, entries)
                 spec = config_from_dict(extract_infos(spec))
-
                 config.merge_defaults(spec)
                 config.interpolate(global_config)
                 config.validate(spec)
@@ -130,8 +129,9 @@ class Plugins(object):
         return self
 
     @staticmethod
-    def _walk(o, name, entry_points, config, get_children):
-        entries = o.iter_entry_points(name, entry_points, config)
+    def _walk(o, name, entry_points, config, get_children, entries):
+        if entries is None:
+            entries = o.iter_entry_points(name, entry_points, config)
         plugins = o.load_entry_points(entries, config)
         for name, entry, cls in plugins:
             plugin = get_children(o, name, cls)
@@ -140,7 +140,8 @@ class Plugins(object):
                 children = plugin._walk(
                     plugin,
                     name, plugin.ENTRY_POINTS, config.get(name, {}),
-                    get_children
+                    get_children,
+                    None
                 )
             else:
                 children = []
@@ -153,11 +154,11 @@ class Plugins(object):
             yield f, (entry, name, cls, plugin, children)
 
     @classmethod
-    def walk1(cls, name, entry_points, config,):
-        return cls._walk(cls, name, entry_points, config, lambda cls, name, plugin: plugin)
+    def walk1(cls, name, entry_points, config, entries=None):
+        return cls._walk(cls, name, entry_points, config, lambda cls, name, plugin: plugin, entries)
 
     def walk2(self, name, entry_points):
-        return self._walk(self, name, entry_points, {}, lambda o, name, plugin: o.get(name))
+        return self._walk(self, name, entry_points, {}, lambda o, name, plugin: o.get(name), None)
 
     def report(self, name, title='Plugins', activated_columns=None, criterias=lambda *args: True, entry_points=None):
 
