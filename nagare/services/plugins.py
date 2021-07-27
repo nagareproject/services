@@ -59,6 +59,16 @@ class Plugins(object):
         return [(entry.name, entry) for entry in pkg_resources.iter_entry_points(entry_points)] if entry_points else []
 
     @classmethod
+    def iter_activated_entry_points(cls, name, entry_points, config, activated_by_default):
+        spec = config_from_dict({'activated': 'boolean(default={})'.format(activated_by_default)})
+        entries = cls.iter_entry_points(name, entry_points, config)
+
+        return [
+            (plugin_name, entry) for plugin_name, entry in entries
+            if config_from_dict(config.get(plugin_name, {})).merge_defaults(spec).validate(spec)['activated']
+        ]
+
+    @classmethod
     def load_entry_points(cls, entry_points, config):
         plugins = [(name, entry, entry.load()) for name, entry in entry_points]
         plugins.sort(key=lambda plugin: cls.load_order(plugin[2]))
@@ -85,37 +95,30 @@ class Plugins(object):
           - ``entry_points`` -- if defined, overloads the ``ENTRY_POINT`` class attribute
           - ``initial_config`` -- other configuration parameters not read from the configuration file
         """
+        config = config or {}
         entry_points = entry_points or self.ENTRY_POINTS
-        entries = self.iter_entry_points(name, entry_points, config)
+        entries = self.iter_activated_entry_points(name, entry_points, config, self.activated_by_default)
 
-        if config is None:
-            config = {}
-            plugins = self.load_entry_points(entries, config)
-        else:
-            spec = config_from_dict({'activated': 'boolean(default={})'.format(self.activated_by_default)})
-            entries = [
-                (plugin_name, entry) for plugin_name, entry in entries
-                if config_from_dict(config.get(plugin_name, {})).merge_defaults(spec).validate(spec)['activated']
-            ]
-            plugins = self.load_entry_points(entries, config)
+        if validate:
 
-            if validate:
-                def extract_infos(spec):
-                    r = {}
+            def extract_infos(spec):
+                r = {}
 
-                    for f, args in spec:
-                        name, config_spec, children = f(*args)
-                        r[name] = dict(config_spec, **extract_infos(children))
+                for f, args in spec:
+                    name, config_spec, children = f(*args)
+                    r[name] = dict(config_spec, **extract_infos(children))
 
-                    return r
+                return r
 
-                spec = self.walk1(name, entry_points, config, entries)
-                spec = config_from_dict(extract_infos(spec))
-                config.merge_defaults(spec)
-                config.interpolate(global_config)
-                config.validate(spec)
-                config = config.dict()
+            spec = self.walk1(name, entry_points, config, self.activated_by_default)
+            spec = config_from_dict(extract_infos(spec))
 
+            config.merge_defaults(spec)
+            config.interpolate(global_config)
+            config.validate(spec)
+            config = config.dict()
+
+        plugins = self.load_entry_points(entries, config)
         for name, entry, plugin in plugins:
             try:
                 plugin_config = config.get(name, {})
@@ -129,19 +132,27 @@ class Plugins(object):
         return self
 
     @staticmethod
-    def _walk(o, name, entry_points, config, get_children, entries):
-        if entries is None:
-            entries = o.iter_entry_points(name, entry_points, config)
-        plugins = o.load_entry_points(entries, config)
-        for name, entry, cls in plugins:
+    def _walk(o, name, entry_points, config, activated_by_default, get_children):
+        all_entries = o.iter_entry_points(name, entry_points, config)
+
+        if activated_by_default is None:
+            activated_entries = all_entries
+        else:
+            spec = config_from_dict({'activated': 'boolean(default={})'.format(activated_by_default)})
+            activated_entries = [
+                (plugin_name, entry) for plugin_name, entry in all_entries
+                if config_from_dict(config.get(plugin_name, {})).merge_defaults(spec).validate(spec)['activated']
+            ]
+
+        for name, entry, cls in o.load_entry_points(activated_entries, config):
             plugin = get_children(o, name, cls)
 
             if hasattr(plugin, '_walk'):
                 children = plugin._walk(
                     plugin,
                     name, plugin.ENTRY_POINTS, config.get(name, {}),
-                    get_children,
-                    None
+                    activated_by_default,
+                    get_children
                 )
             else:
                 children = []
@@ -151,16 +162,17 @@ class Plugins(object):
                 'get_plugin_spec',
                 lambda entry, name, cls, plugin, children: (name, cls.CONFIG_SPEC, children)
             )
+
             yield f, (entry, name, cls, plugin, children)
 
     @classmethod
-    def walk1(cls, name, entry_points, config, entries=None):
-        return cls._walk(cls, name, entry_points, config, lambda cls, name, plugin: plugin, entries)
+    def walk1(cls, name, entry_points, config, activated_by_default):
+        return cls._walk(cls, name, entry_points, config, activated_by_default, lambda cls, name, plugin: plugin)
 
-    def walk2(self, name, entry_points):
-        return self._walk(self, name, entry_points, {}, lambda o, name, plugin: o.get(name), None)
+    def walk2(self, name):
+        return self._walk(self, name, self.ENTRY_POINTS, {}, None, lambda o, name, plugin: o.get(name))
 
-    def report(self, name, title='Plugins', activated_columns=None, criterias=lambda *args: True, entry_points=None):
+    def report(self, name, title='Plugins', activated_columns=None, criterias=lambda *args: True):
 
         def extract_infos(plugins, added, level, ancestors):
             infos = []
@@ -181,14 +193,15 @@ class Plugins(object):
 
             return infos
 
-        plugins = extract_infos(self.walk2(name, entry_points or self.ENTRY_POINTS), set(), 0, ())
+        plugins = self.walk2(name)
+        infos = extract_infos(plugins, set(), 0, ())
 
         print(title + ':\n')
 
-        if not plugins:
+        if not infos:
             print('  <empty>')
         else:
-            PluginsReporter().report({'name', 'order', 'x'} | (activated_columns or set()), plugins, False)
+            PluginsReporter().report({'name', 'order', 'x'} | (activated_columns or set()), infos, False)
 
     def copy(self, **kw):
         """Create a new copy of this registry

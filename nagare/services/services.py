@@ -62,9 +62,6 @@ class Services(plugins.Plugins):
 
         return services
 
-    def report(self, name, entry_points, title='Services', activated_columns=None, criterias=lambda _: True):
-        super(Services, self).report(name, entry_points, title, activated_columns, criterias)
-
     def get_dependency(self, name, is_mandatory=True):
         """Retrieve a dependency from this registry
 
