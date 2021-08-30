@@ -59,14 +59,21 @@ class Plugins(object):
         return [(entry.name, entry) for entry in pkg_resources.iter_entry_points(entry_points)] if entry_points else []
 
     @classmethod
-    def iter_activated_entry_points(cls, name, entry_points, config, activated_by_default):
+    def iter_activated_entry_points(cls, name, entry_points, config, global_config, activated_by_default):
         spec = config_from_dict({'activated': 'boolean(default={})'.format(activated_by_default)})
-        entries = cls.iter_entry_points(name, entry_points, config)
 
-        return [
-            (plugin_name, entry) for plugin_name, entry in entries
-            if config_from_dict(config.get(plugin_name, {})).merge_defaults(spec).validate(spec)['activated']
-        ]
+        entries = []
+
+        for plugin_name, entry in cls.iter_entry_points(name, entry_points, config):
+            conf = config_from_dict(config.get(plugin_name, {}))
+            conf.merge_defaults(spec)
+            conf.interpolate(global_config)
+            conf.validate(spec)
+
+            if conf['activated']:
+                entries.append((plugin_name, entry))
+
+        return entries
 
     @classmethod
     def load_entry_points(cls, entry_points, config):
@@ -97,7 +104,7 @@ class Plugins(object):
         """
         config = config or {}
         entry_points = entry_points or self.ENTRY_POINTS
-        entries = self.iter_activated_entry_points(name, entry_points, config, self.activated_by_default)
+        entries = self.iter_activated_entry_points(name, entry_points, config, global_config, self.activated_by_default)
 
         if validate:
 
@@ -110,7 +117,7 @@ class Plugins(object):
 
                 return r
 
-            spec = self.walk1(name, entry_points, config, self.activated_by_default)
+            spec = self.walk1(name, entry_points, config, global_config, self.activated_by_default)
             spec = config_from_dict(extract_infos(spec))
 
             config.merge_defaults(spec)
@@ -128,21 +135,27 @@ class Plugins(object):
             except Exception:
                 print("'%s' can't be loaded" % name)
                 raise
-
         return self
 
     @staticmethod
-    def _walk(o, name, entry_points, config, activated_by_default, get_children):
+    def _walk(o, name, entry_points, config, global_config, activated_by_default, get_children):
         all_entries = o.iter_entry_points(name, entry_points, config)
 
         if activated_by_default is None:
             activated_entries = all_entries
         else:
             spec = config_from_dict({'activated': 'boolean(default={})'.format(activated_by_default)})
-            activated_entries = [
-                (plugin_name, entry) for plugin_name, entry in all_entries
-                if config_from_dict(config.get(plugin_name, {})).merge_defaults(spec).validate(spec)['activated']
-            ]
+
+            activated_entries = []
+
+            for plugin_name, entry in all_entries:
+                conf = config_from_dict(config.get(plugin_name, {}))
+                conf.merge_defaults(spec)
+                conf.interpolate(global_config)
+                conf.validate(spec)
+
+                if conf['activated']:
+                    activated_entries.append((plugin_name, entry))
 
         for name, entry, cls in o.load_entry_points(activated_entries, config):
             plugin = get_children(o, name, cls)
@@ -150,7 +163,7 @@ class Plugins(object):
             if hasattr(plugin, '_walk'):
                 children = plugin._walk(
                     plugin,
-                    name, plugin.ENTRY_POINTS, config.get(name, {}),
+                    name, plugin.ENTRY_POINTS, config.get(name, {}), global_config,
                     activated_by_default,
                     get_children
                 )
@@ -166,11 +179,19 @@ class Plugins(object):
             yield f, (entry, name, cls, plugin, children)
 
     @classmethod
-    def walk1(cls, name, entry_points, config, activated_by_default):
-        return cls._walk(cls, name, entry_points, config, activated_by_default, lambda cls, name, plugin: plugin)
+    def walk1(cls, name, entry_points, config, global_config, activated_by_default):
+        return cls._walk(
+            cls, name, entry_points,
+            config, global_config, activated_by_default,
+            lambda cls, name, plugin: plugin
+        )
 
     def walk2(self, name):
-        return self._walk(self, name, self.ENTRY_POINTS, {}, None, lambda o, name, plugin: o.get(name))
+        return self._walk(
+            self, name, self.ENTRY_POINTS,
+            {}, {}, None,
+            lambda o, name, plugin: o.get(name)
+        )
 
     def report(self, name, title='Plugins', activated_columns=None, criterias=lambda *args: True):
 
