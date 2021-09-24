@@ -65,10 +65,8 @@ class Plugins(object):
         entries = []
 
         for plugin_name, entry in cls.iter_entry_points(name, entry_points, config):
-            conf = config_from_dict(config.get(plugin_name, {}))
-            conf.merge_defaults(spec)
-            conf.interpolate(global_config)
-            conf.validate(spec)
+            conf = {'activated': config.get(plugin_name, {}).get('activated', str(activated_by_default))}
+            conf = config_from_dict(conf).interpolate(global_config).validate(spec)
 
             if conf['activated']:
                 entries.append((plugin_name, entry))
@@ -103,8 +101,14 @@ class Plugins(object):
           - ``initial_config`` -- other configuration parameters not read from the configuration file
         """
         config = config or {}
+        if type(config) is dict:
+            config = config_from_dict(config)
+
         entry_points = entry_points or self.ENTRY_POINTS
         entries = self.iter_activated_entry_points(name, entry_points, config, global_config, self.activated_by_default)
+
+        activated_sections = set(e[0] for e in entries)
+        config.sections = {name: section for name, section in config.sections.items() if name in activated_sections}
 
         if validate:
 
@@ -118,11 +122,13 @@ class Plugins(object):
                 return r
 
             spec = self.walk1(name, entry_points, config, global_config, self.activated_by_default)
-            spec = config_from_dict(extract_infos(spec))
+            spec = {name: section for name, section in extract_infos(spec).items() if name in activated_sections}
+            spec = config_from_dict(spec)
 
             config.merge_defaults(spec)
-            config.interpolate(global_config)
-            config.validate(spec)
+            config.interpolate(global_config).validate(spec)
+
+        if type(config) is not dict:
             config = config.dict()
 
         plugins = self.load_entry_points(entries, config)
@@ -149,10 +155,8 @@ class Plugins(object):
             activated_entries = []
 
             for plugin_name, entry in all_entries:
-                conf = config_from_dict(config.get(plugin_name, {}))
-                conf.merge_defaults(spec)
-                conf.interpolate(global_config)
-                conf.validate(spec)
+                conf = {'activated': config.get(plugin_name, {}).get('activated', str(activated_by_default))}
+                conf = config_from_dict(conf).interpolate(global_config).validate(spec)
 
                 if conf['activated']:
                     activated_entries.append((plugin_name, entry))
