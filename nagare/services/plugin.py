@@ -81,8 +81,12 @@ class SelectionPlugin(PluginsPlugin):
 
         entry = entries.get(selector)
         if not entry:
-            choices = map("'{}'".format, entries)
-            error = "invalid value '{}', can only be {}".format(selector, ' or '.join(choices))
+            choices = ["'{}'".format(entry) for entry in entries]
+            error = "invalid value '{}', ".format(selector)
+            if choices:
+                error += 'can only be {}'.format(' or '.join(choices))
+            else:
+                error += 'no choice available'
 
             raise ParameterError(error, sections=[name], name=cls.SELECTOR)
 

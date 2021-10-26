@@ -121,7 +121,7 @@ class Plugins(object):
 
                 return r
 
-            spec = self.walk1(name, entry_points, config, global_config, self.activated_by_default)
+            spec = self.walk1(name, entries, config, global_config, self.activated_by_default)
             spec = {name: section for name, section in extract_infos(spec).items() if name in activated_sections}
             spec = config_from_dict(spec)
 
@@ -145,7 +145,7 @@ class Plugins(object):
 
     @staticmethod
     def _walk(o, name, entry_points, config, global_config, activated_by_default, get_children):
-        all_entries = o.iter_entry_points(name, entry_points, config)
+        all_entries = o.iter_entry_points(name, entry_points, config) if isinstance(entry_points, str) else entry_points
 
         if activated_by_default is None:
             activated_entries = all_entries
