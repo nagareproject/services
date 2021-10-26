@@ -81,7 +81,7 @@ class SelectionPlugin(PluginsPlugin):
 
         entry = entries.get(selector)
         if not entry:
-            choices = ["'{}'".format(entry) for entry in entries]
+            choices = list(map("'{}'".format, entries))
             error = "invalid value '{}', ".format(selector)
             if choices:
                 error += 'can only be {}'.format(' or '.join(choices))
