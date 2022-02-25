@@ -75,10 +75,15 @@ class Plugins(object):
 
     @classmethod
     def load_entry_points(cls, entry_points, config):
-        plugins = [(name, entry, entry.load()) for name, entry in entry_points]
-        plugins.sort(key=lambda plugin: cls.load_order(plugin[2]))
+        all_plugins = [(name, entry, entry.load()) for name, entry in entry_points]
+        all_plugins.sort(key=lambda plugin: cls.load_order(plugin[2]))
 
-        return list(OrderedDict((name, (name, entry, plugin)) for name, entry, plugin in plugins).values())
+        plugins = OrderedDict()
+        for name, entry, plugin in all_plugins:
+            plugins.pop(name, None)
+            plugins[name] = (name, entry, plugin)
+
+        return list(plugins.values())
 
     def _load_plugin(self, name_, dist, plugin_cls, activated=None, **config):
         """Load and activate a plugin
