@@ -35,7 +35,7 @@ class Plugins(object):
         self.plugins = OrderedDict()
 
     @staticmethod
-    def load_order(plugin):
+    def load_order(name, entry, plugin):
         """Get the loading order of a plugin
 
         In:
@@ -44,7 +44,8 @@ class Plugins(object):
         Returns:
           - value to sort the plugin on
         """
-        return plugin.LOAD_PRIORITY  # By default, the plugins are sorted on their ``LOAD_PRIORITY`` value
+        # By default, the plugins are sorted on their ``LOAD_PRIORITY`` value then their name
+        return (plugin.LOAD_PRIORITY, name)
 
     @classmethod
     def iter_entry_points(cls, name, entry_points, config):
@@ -76,7 +77,7 @@ class Plugins(object):
     @classmethod
     def load_entry_points(cls, entry_points, config):
         all_plugins = [(name, entry, entry.load()) for name, entry in entry_points]
-        all_plugins.sort(key=lambda plugin: cls.load_order(plugin[2]))
+        all_plugins.sort(key=lambda plugin: cls.load_order(*plugin))
 
         plugins = OrderedDict()
         for name, entry, plugin in all_plugins:

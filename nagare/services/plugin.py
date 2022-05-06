@@ -31,7 +31,7 @@ class Plugin(object):
 
     def __init__(self, name_, dist, **config):
         self.name = name_
-        config['activated'] = 'on'
+        config.setdefault('activated', True)
         self.plugin_config = config
 
     @property
