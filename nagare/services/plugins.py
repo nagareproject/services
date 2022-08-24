@@ -13,12 +13,17 @@
 The plugins are read from an entry point and configured from a file
 """
 
-from collections import OrderedDict
-
+import warnings
+import distutils  # noqa: F401
 import pkg_resources
+from collections import OrderedDict
 from nagare.config import config_from_dict
 
 from .reporters import PluginsReporter
+
+
+warnings.filterwarnings('ignore', module='_distutils')
+from pip._internal.metadata.pkg_resources import Distribution  # noqa: E402
 
 
 class Plugins(object):
@@ -140,8 +145,11 @@ class Plugins(object):
         plugins = self.load_entry_points(entries, config)
         for name, entry, plugin in plugins:
             try:
+                dist = entry.dist
+                dist.location = Distribution(dist).editable_project_location or dist.location
+
                 plugin_config = config.get(name, {})
-                plugin_instance = self._load_plugin(name, entry.dist, plugin, **plugin_config)
+                plugin_instance = self._load_plugin(name, dist, plugin, **plugin_config)
                 if plugin_instance is not None:
                     self[name.replace('.', '_')] = plugin_instance
             except Exception:

@@ -9,6 +9,10 @@
 # --
 
 import sys
+import warnings
+
+warnings.filterwarnings('ignore', module='_distutils')
+from pip._internal.metadata.pkg_resources import Distribution  # noqa: E402
 
 
 class Reporter(object):
@@ -16,7 +20,7 @@ class Reporter(object):
     def __init__(self, columns=()):
         self.columns = columns
 
-    def report(self, activated_columns, to_report, sorted, display=None):
+    def report(self, activated_columns, to_report, sorted, display=None, indent=0):
         display = display or (lambda m: sys.stdout.write(m + '\n'))
         if not to_report:
             display('  <empty>')
@@ -30,9 +34,9 @@ class Reporter(object):
             column.append(max((padding, len(label))))
 
         labels = [(label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns]  # noqa: F812
-        display('  ' + ' '.join(labels))
+        display((' ' * indent) + ' '.join(labels))
         labels = ['-' * padding for label, extract, left, padding in columns]
-        display('  ' + ' '.join(labels))
+        display((' ' * indent) + ' '.join(labels))
 
         rows = []
         for args in to_report:
@@ -48,14 +52,14 @@ class Reporter(object):
             rows.sort()
 
         for fields in rows:
-            display('  ' + ' '.join(fields))
+            display((' ' * indent) + ' '.join(fields))
 
 
 class PackagesReporter(Reporter):
     COLUMNS = (
         ('Package', lambda dist, *args: dist.project_name, True),
         ('Version', lambda dist, *args: dist.version, True),
-        ('Location', lambda dist, *args: dist.location, True)
+        ('Location', lambda dist, *args: Distribution(dist).editable_project_location or dist.location, True)
     )
 
     def __init__(self, columns=None):
