@@ -12,7 +12,12 @@ import sys
 import warnings
 
 warnings.filterwarnings('ignore', module='_distutils')
-from pip._internal.metadata.pkg_resources import Distribution  # noqa: E402
+try:
+    from pip._internal.metadata.pkg_resources import Distribution  # noqa: E402
+except ImportError:
+    def Distribution(dist):
+        dist.editable_project_location = None
+        return dist
 
 
 class Reporter(object):
