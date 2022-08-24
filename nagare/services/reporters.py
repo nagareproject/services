@@ -14,7 +14,7 @@ import warnings
 warnings.filterwarnings('ignore', module='_distutils')
 try:
     from pip._internal.metadata.pkg_resources import Distribution  # noqa: E402
-except ImportError:
+except (ModuleNotFoundError, ImportError):
     def Distribution(dist):
         dist.editable_project_location = None
         return dist
