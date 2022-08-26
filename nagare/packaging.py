@@ -19,6 +19,7 @@ try:
     from pip._internal.metadata import pkg_resources
 
     logging.getLogger('pip._internal.utils.packaging').setLevel('ERROR')
+    logging.getLogger('pip._internal.metadata.pkg_resources').setLevel('ERROR')
 
     def get_editable_project_location(dist):
         return pkg_resources.Distribution(dist).editable_project_location
