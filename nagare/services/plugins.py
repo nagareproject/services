@@ -13,22 +13,11 @@
 The plugins are read from an entry point and configured from a file
 """
 
-import warnings
-import distutils  # noqa: F401
 import pkg_resources
 from collections import OrderedDict
+from nagare.packaging import Distribution
 from nagare.config import config_from_dict
-
 from .reporters import PluginsReporter
-
-
-warnings.filterwarnings('ignore', module='_distutils')
-try:
-    from pip._internal.metadata.pkg_resources import Distribution  # noqa: E402
-except ImportError:
-    def Distribution(dist):
-        dist.editable_project_location = None
-        return dist
 
 
 class Plugins(object):
