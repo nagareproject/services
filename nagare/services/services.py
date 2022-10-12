@@ -13,9 +13,12 @@
 import inspect
 import functools
 try:
-    from inspect import getfullargspec as getargspec
+    from inspect import signature
+    from inspect.Parameter import POSITIONAL_OR_KEYWORD, KEYWORD_ONLY, empty
+    PY_VERSION = 3
 except ImportError:
     from inspect import getargspec
+    PY_VERSION = 2
 
 from . import exceptions, plugins
 
@@ -107,17 +110,25 @@ class Services(plugins.Plugins):
         if inspect.isclass(f):
             f2 = f.__init__ if inspect.isroutine(f.__init__) else lambda: None
 
-        args_spec = getargspec(f2)
+        if PY_VERSION == 3:
+            # Retrieve the dependencies to inject
+            dependencies = dict(
+                self.get_dependency(p.name, p.default is empty)
+                for p in signature(f2).parameters.values()
+                if ((p.kind == POSITIONAL_OR_KEYWORD) or (p.kind == KEYWORD_ONLY)) and p.name.endswith(self.postfix)
+            )
+        else:
+            args_spec = getargspec(f2)
 
-        nb_default_values = len(args_spec.defaults or ())
-        names = args_spec.args
+            nb_default_values = len(args_spec.defaults or ())
+            names = args_spec.args
 
-        # Retrieve the dependencies to inject
-        dependencies = dict(
-            self.get_dependency(name, i >= nb_default_values)
-            for i, name in enumerate(reversed(names))
-            if name.endswith(self.postfix)
-        )
+            # Retrieve the dependencies to inject
+            dependencies = dict(
+                self.get_dependency(name, i >= nb_default_values)
+                for i, name in enumerate(reversed(names))
+                if name.endswith(self.postfix)
+            )
 
         dependencies.pop(None, None)
         dependencies.update(kw)
