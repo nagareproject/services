@@ -13,8 +13,11 @@
 import inspect
 import functools
 try:
-    from inspect import signature
-    from inspect.Parameter import POSITIONAL_OR_KEYWORD, KEYWORD_ONLY, empty
+    from inspect import signature, Parameter
+    POSITIONAL_OR_KEYWORD = Parameter.POSITIONAL_OR_KEYWORD
+    KEYWORD_ONLY = Parameter.KEYWORD_ONLY
+    EMPTY = Parameter.empty
+
     PY_VERSION = 3
 except ImportError:
     from inspect import getargspec
@@ -113,7 +116,7 @@ class Services(plugins.Plugins):
         if PY_VERSION == 3:
             # Retrieve the dependencies to inject
             dependencies = dict(
-                self.get_dependency(p.name, p.default is empty)
+                self.get_dependency(p.name, p.default is EMPTY)
                 for p in signature(f2).parameters.values()
                 if ((p.kind == POSITIONAL_OR_KEYWORD) or (p.kind == KEYWORD_ONLY)) and p.name.endswith(self.postfix)
             )
