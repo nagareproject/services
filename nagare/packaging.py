@@ -9,25 +9,47 @@
 # this distribution.
 # --
 
+import json
 import logging
 import warnings
 import distutils  # noqa: F401
 
+try:
+    import urlparse
+except ImportError:
+    import urllib.parse as urlparse
+
 warnings.filterwarnings('ignore', module='_distutils')
 
 try:
-    from pip._internal.metadata import pkg_resources
 
-    logging.getLogger('pip._internal.utils.packaging').setLevel('ERROR')
-    logging.getLogger('pip._internal.metadata.pkg_resources').setLevel('ERROR')
+    from importlib.metadata import distribution
 
     def get_editable_project_location(dist):
-        return getattr(pkg_resources.Distribution(dist), 'editable_project_location', None)
+        content = distribution(dist.project_name).read_text('direct_url.json')
+        if content is None:
+            location = None
+        else:
+            url = json.loads(content)['url']
+            location = urlparse.urlsplit(url)[2]
+
+        return location
 
 except ImportError:
 
-    def get_editable_project_location(dist):
-        return None
+    try:
+        from pip._internal.metadata import pkg_resources
+
+        logging.getLogger('pip._internal.utils.packaging').setLevel('ERROR')
+        logging.getLogger('pip._internal.metadata.pkg_resources').setLevel('ERROR')
+
+        def get_editable_project_location(dist):
+            return getattr(pkg_resources.Distribution(dist), 'editable_project_location', None)
+
+    except ImportError:
+
+        def get_editable_project_location(dist):
+            return None
 
 
 def Distribution(dist):
