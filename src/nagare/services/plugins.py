@@ -1,6 +1,6 @@
 # Encoding: utf-8
 # --
-# Copyright (c) 2008-2022 Net-ng.
+# Copyright (c) 2008-2023 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -8,15 +8,17 @@
 # this distribution.
 # --
 
-"""Plugins registry
+"""Plugins registry.
 
 The plugins are read from an entry point and configured from a file
 """
 
-import pkg_resources
 from collections import OrderedDict
-from nagare.packaging import Distribution
+
 from nagare.config import config_from_dict
+from nagare.packaging import Distribution
+import pkg_resources
+
 from .reporters import PluginsReporter
 
 
@@ -25,7 +27,7 @@ class Plugins(object):
     ENTRY_POINTS = None  # Section where to read the entry points
 
     def __init__(self, activated_by_default=True):
-        """Eager / lazy loading of the plugins
+        """Eager / lazy loading of the plugins.
 
         In:
           - ``entry_points`` -- if defined, overloads the ``ENTRY_POINT`` class attribute
@@ -35,7 +37,7 @@ class Plugins(object):
 
     @staticmethod
     def load_order(name, entry, plugin):
-        """Get the loading order of a plugin
+        """Get the loading order of a plugin.
 
         In:
           - ``plugin`` -- the plugin
@@ -48,7 +50,7 @@ class Plugins(object):
 
     @classmethod
     def iter_entry_points(cls, name, entry_points, config):
-        """Read the entry points
+        """Read the entry points.
 
         In:
           - ``entry_points`` -- section where to read the entry points
@@ -86,7 +88,7 @@ class Plugins(object):
         return list(plugins.values())
 
     def _load_plugin(self, name_, dist, plugin_cls, activated=None, **config):
-        """Load and activate a plugin
+        """Load and activate a plugin.
 
         In:
           - ``plugin`` -- the plugin
@@ -97,7 +99,7 @@ class Plugins(object):
         return plugin_cls(name_, dist, **config)
 
     def load_plugins(self, name, config=None, global_config=None, validate=False, entry_points=None):
-        """Load, configure, activate and register the plugin
+        """Load, configure, activate and register the plugin.
 
         In:
           - ``config`` -- ``ConfigObj`` configuration object
@@ -112,7 +114,7 @@ class Plugins(object):
         entry_points = entry_points or self.ENTRY_POINTS
         entries = self.iter_activated_entry_points(name, entry_points, config, global_config, self.activated_by_default)
 
-        activated_sections = set(e[0] for e in entries)
+        activated_sections = {e[0] for e in entries}
         config.sections = {name: section for name, section in config.sections.items() if name in activated_sections}
 
         if validate:
@@ -175,17 +177,18 @@ class Plugins(object):
             if hasattr(plugin, '_walk'):
                 children = plugin._walk(
                     plugin,
-                    name, plugin.ENTRY_POINTS, config.get(name, {}), global_config,
+                    name,
+                    plugin.ENTRY_POINTS,
+                    config.get(name, {}),
+                    global_config,
                     activated_by_default,
-                    get_children
+                    get_children,
                 )
             else:
                 children = []
 
             f = getattr(
-                cls,
-                'get_plugin_spec',
-                lambda entry, name, cls, plugin, children: (name, cls.CONFIG_SPEC, children)
+                cls, 'get_plugin_spec', lambda entry, name, cls, plugin, children: (name, cls.CONFIG_SPEC, children)
             )
 
             yield f, (entry, name, cls, plugin, children)
@@ -193,20 +196,13 @@ class Plugins(object):
     @classmethod
     def walk1(cls, name, entry_points, config, global_config, activated_by_default):
         return cls._walk(
-            cls, name, entry_points,
-            config, global_config, activated_by_default,
-            lambda cls, name, plugin: plugin
+            cls, name, entry_points, config, global_config, activated_by_default, lambda cls, name, plugin: plugin
         )
 
     def walk2(self, name):
-        return self._walk(
-            self, name, self.ENTRY_POINTS,
-            {}, {}, None,
-            lambda o, name, plugin: o.get(name)
-        )
+        return self._walk(self, name, self.ENTRY_POINTS, {}, {}, None, lambda o, name, plugin: o.get(name))
 
     def report(self, name, title='Plugins', activated_columns=None, criterias=lambda *args: True):
-
         def extract_infos(plugins, added, level, ancestors):
             infos = []
             for plugin in plugins:
@@ -218,7 +214,7 @@ class Plugins(object):
                     added.add(fullname)
 
                 for info in extract_infos(children, added, level + 1, fullname):
-                    if (fullname not in added):
+                    if fullname not in added:
                         infos.append((entry.dist, level, name, cls, plugin))
                         added.add(fullname)
 
@@ -237,7 +233,7 @@ class Plugins(object):
             PluginsReporter().report({'name', 'order', 'x'} | (activated_columns or set()), infos, False)
 
     def copy(self, **kw):
-        """Create a new copy of this registry
+        """Create a new copy of this registry.
 
         Returns:
           - the new registry

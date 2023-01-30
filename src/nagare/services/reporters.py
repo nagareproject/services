@@ -1,6 +1,6 @@
 # Encoding: utf-8
 # --
-# Copyright (c) 2008-2022 Net-ng.
+# Copyright (c) 2008-2023 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -14,7 +14,6 @@ from nagare.packaging import Distribution
 
 
 class Reporter(object):
-
     def __init__(self, columns=()):
         self.columns = columns
 
@@ -31,7 +30,9 @@ class Reporter(object):
             padding = max(len(extract(*args)) for args in to_report)
             column.append(max((padding, len(label))))
 
-        labels = [(label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns]  # noqa: F812
+        labels = [
+            (label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns
+        ]  # noqa: F812
         display((' ' * indent) + ' '.join(labels))
         labels = ['-' * padding for label, extract, left, padding in columns]
         display((' ' * indent) + ' '.join(labels))
@@ -57,7 +58,7 @@ class PackagesReporter(Reporter):
     COLUMNS = (
         ('Package', lambda dist, *args: dist.project_name, True),
         ('Version', lambda dist, *args: dist.version, True),
-        ('Location', lambda dist, *args: Distribution(dist).editable_project_location or dist.location, True)
+        ('Location', lambda dist, *args: Distribution(dist).editable_project_location or dist.location, True),
     )
 
     def __init__(self, columns=None):
@@ -65,20 +66,23 @@ class PackagesReporter(Reporter):
 
 
 class PluginsReporter(PackagesReporter):
-
     def __init__(self):
-        super(PluginsReporter, self).__init__((
-            ('Name', lambda dist, level, name, plugin, activated: ' ' * (4 * level) + name, True),
-            ('X', lambda dist, level, name, plugin, activated: '-' if activated is None else '+', True),
-            ('Order', lambda dist, level, name, plugin, activated: str(plugin.LOAD_PRIORITY), False),
-        ) + PackagesReporter.COLUMNS + (
-            ('Module', lambda dist, level, name, plugin, activated: self.extract_module(plugin), True),
+        super(PluginsReporter, self).__init__(
             (
-                'Description',
-                lambda dist, level, name, plugin, activated: self.extract_description(plugin, activated),
-                True
+                ('Name', lambda dist, level, name, plugin, activated: ' ' * (4 * level) + name, True),
+                ('X', lambda dist, level, name, plugin, activated: '-' if activated is None else '+', True),
+                ('Order', lambda dist, level, name, plugin, activated: str(plugin.LOAD_PRIORITY), False),
             )
-        ))
+            + PackagesReporter.COLUMNS
+            + (
+                ('Module', lambda dist, level, name, plugin, activated: self.extract_module(plugin), True),
+                (
+                    'Description',
+                    lambda dist, level, name, plugin, activated: self.extract_description(plugin, activated),
+                    True,
+                ),
+            )
+        )
 
     @staticmethod
     def extract_module(plugin):

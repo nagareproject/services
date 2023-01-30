@@ -1,7 +1,7 @@
 # Encoding: utf-8
 
 # --
-# Copyright (c) 2008-2022 Net-ng.
+# Copyright (c) 2008-2023 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -11,15 +11,13 @@
 
 import os
 
-import pytest
-import pkg_resources
-
 from nagare.config import config_from_file
 from nagare.services import exceptions, plugin, services
+import pkg_resources
+import pytest
 
 
 class DummyServices(services.Services):
-
     @classmethod
     def iter_entry_points(cls, name, entry_points, config):
         if not entry_points:
@@ -77,11 +75,11 @@ class DummyService6(plugin.Plugin):
     def __init__(self, *args, **kw):
         raise NotImplementedError()
 
+
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 def test_load_service1():
-
     class Services(DummyServices):
         ENTRY_POINTS = 'nagare.services.test1'
 
@@ -106,7 +104,6 @@ def test_load_service1():
 
 
 def test_injection_of_services():
-
     class Services(DummyServices):
         ENTRY_POINTS = 'nagare.services.test1'
 
@@ -117,7 +114,6 @@ def test_injection_of_services():
 
 
 def test_injection_of_service():
-
     class Services(DummyServices):
         ENTRY_POINTS = 'nagare.services.test2'
 
@@ -144,7 +140,6 @@ def test_injection_of_service():
 
 
 def test_activation1():
-
     class Services(DummyServices):
         ENTRY_POINTS = 'nagare.services.test3'
 
@@ -155,7 +150,6 @@ def test_activation1():
 
 
 def test_activation2():
-
     class Services(DummyServices):
         ENTRY_POINTS = 'nagare.services.test4'
 
@@ -167,7 +161,6 @@ def test_activation2():
 
 
 def test_injection():
-
     class Services(DummyServices):
         ENTRY_POINTS = 'nagare.services.test3'
 

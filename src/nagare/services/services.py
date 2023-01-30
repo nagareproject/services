@@ -1,7 +1,7 @@
 # Encoding: utf-8
 
 # --
-# Copyright (c) 2008-2022 Net-ng.
+# Copyright (c) 2008-2023 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -9,11 +9,13 @@
 # this distribution.
 # --
 
-"""Services registry"""
-import inspect
+"""Services registry."""
 import functools
+import inspect
+
 try:
-    from inspect import signature, Parameter
+    from inspect import Parameter, signature
+
     POSITIONAL_OR_KEYWORD = Parameter.POSITIONAL_OR_KEYWORD
     KEYWORD_ONLY = Parameter.KEYWORD_ONLY
     EMPTY = Parameter.empty
@@ -21,15 +23,15 @@ try:
     PY_VERSION = 3
 except ImportError:
     from inspect import getargspec
+
     PY_VERSION = 2
 
 from . import exceptions, plugins
 
 
 class Services(plugins.Plugins):
-
     def __init__(self, activated_by_default=True, dependencies_postfix='service'):
-        """Eager / lazy loading of the services
+        """Eager / lazy loading of the services.
 
         In:
           - ``config`` -- ``ConfigObj`` configuration object
@@ -42,7 +44,7 @@ class Services(plugins.Plugins):
         super(Services, self).__init__(activated_by_default)
 
     def _load_plugin(self, name_, dist, service_cls, activated=None, **config):
-        """Load and activate a service
+        """Load and activate a service.
 
         In:
           - ``service`` -- the service
@@ -69,7 +71,7 @@ class Services(plugins.Plugins):
         return services
 
     def get_dependency(self, name, is_mandatory=True):
-        """Retrieve a dependency from this registry
+        """Retrieve a dependency from this registry.
 
         Args:
           name: name of the dependency to retrieve (with the postfix)
@@ -82,7 +84,7 @@ class Services(plugins.Plugins):
           None, _: optional dependency not found
           str, object: dependency found
         """
-        name2 = name[:-len(self.postfix)]  # strip the postfix
+        name2 = name[: -len(self.postfix)]  # strip the postfix
 
         if name2 == 'services':
             dependency = self
@@ -98,7 +100,7 @@ class Services(plugins.Plugins):
         return name, dependency
 
     def __call__(self, f, *args, **kw):
-        """Call ``f`` with dependencies injection
+        """Call ``f`` with dependencies injection.
 
         Args:
           f: a callable
@@ -139,7 +141,7 @@ class Services(plugins.Plugins):
         return f(*args, **dependencies)
 
     def inject(self, f):
-        """Function decorator
+        """Decorate function to inject dependencies into.
 
         Call ``f`` with dependencies injection
 

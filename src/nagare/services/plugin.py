@@ -1,6 +1,6 @@
 # Encoding: utf-8
 # --
-# Copyright (c) 2008-2022 Net-ng.
+# Copyright (c) 2008-2023 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -8,19 +8,19 @@
 # this distribution.
 # --
 
-"""Base classes for the loadable plugins"""
+"""Base classes for the loadable plugins."""
 
 from __future__ import absolute_import
 
 import logging
 
-from nagare.config import config_from_dict, ParameterError
+from nagare.config import ParameterError, config_from_dict
 
 from . import plugins
 
 
 class Plugin(object):
-    """The plugin is a class"""
+    """The plugin is a class."""
 
     DESC = ''
     # Specification of the plugin configuration, read from the application
@@ -44,7 +44,7 @@ class Plugin(object):
 
 
 class PluginsPlugin(plugins.Plugins, Plugin):
-    """The plugin is itself a plugins registry"""
+    """The plugin is itself a plugins registry."""
 
     def __init__(self, name_, dist, **config):
         plugins.Plugins.__init__(self)
@@ -62,7 +62,7 @@ class SelectionPlugin(PluginsPlugin):
 
     @classmethod
     def iter_entry_points(cls, name, entry_points, config=None):
-        """Read the entry points
+        """Read the entry points.
 
         In:
           - ``entry_points`` -- section where to read the entry points

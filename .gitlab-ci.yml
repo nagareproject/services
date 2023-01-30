@@ -1,7 +1,7 @@
 # Encoding: utf-8
 
 # --
-# Copyright (c) 2008-2022 Net-ng.
+# Copyright (c) 2008-2023 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -9,14 +9,10 @@
 # this distribution.
 # --
 
-tests2:
+tests:
   script:
-    - pip2 install flake8 'pytest<5' .
-    - flake8 nagare
+    - pip3 install ruff black
+    - ruff src
+    - black src
     - pytest
 
-tests3:
-  script:
-  - pip3 install flake8 pytest .
-  - flake8 nagare
-  - pytest

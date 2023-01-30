@@ -1,7 +1,7 @@
 # Encoding: utf-8
 
 # --
-# Copyright (c) 2008-2022 Net-ng.
+# Copyright (c) 2008-2023 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -11,24 +11,13 @@
 
 import os
 
-import pkg_resources
 from nagare.config import config_from_dict, config_from_file
+from nagare.services import plugin, plugins
+import pkg_resources
 
-from nagare.services import plugins, plugin
-
-
-CONFIG = config_from_dict({
-    'my_plugins': {
-        'test1': {
-            'value1': '20',
-            'value2': '$root/a.txt'
-        },
-
-        'test2': {
-            'value3': '$greeting world!'
-        }
-    }
-})
+CONFIG = config_from_dict(
+    {'my_plugins': {'test1': {'value1': '20', 'value2': '$root/a.txt'}, 'test2': {'value3': '$greeting world!'}}}
+)
 
 
 class DummyPlugins(plugins.Plugins):
@@ -44,11 +33,7 @@ class DummyPlugins(plugins.Plugins):
 
 
 class DummyPlugin1(plugin.Plugin):
-    CONFIG_SPEC = dict(
-        plugin.Plugin.CONFIG_SPEC,
-        value1='integer',
-        value2='string'
-    )
+    CONFIG_SPEC = dict(plugin.Plugin.CONFIG_SPEC, value1='integer', value2='string')
     CATEGORY = 'TEST1'
     TEST_VALUE = 42
 
@@ -60,10 +45,7 @@ class DummyPlugin1(plugin.Plugin):
 
 class DummyPlugin2(plugin.Plugin):
     CONFIG_SPEC = dict(
-        plugin.Plugin.CONFIG_SPEC,
-        value1='integer(default=10)',
-        value2='string(default="$root/b.txt")',
-        value3='string'
+        plugin.Plugin.CONFIG_SPEC, value1='integer(default=10)', value2='string(default="$root/b.txt")', value3='string'
     )
     CATEGORY = 'TEST2'
     TEST_VALUE = 43
@@ -77,10 +59,7 @@ class DummyPlugin2(plugin.Plugin):
 
 class PluginsOfPlugins(plugin.PluginsPlugin):
     ENTRY_POINTS = 'nagare.services.auth'
-    CONFIG_SPEC = dict(
-        plugin.PluginsPlugin.CONFIG_SPEC,
-        value1='integer'
-    )
+    CONFIG_SPEC = dict(plugin.PluginsPlugin.CONFIG_SPEC, value1='integer')
 
     def __init__(self, name, dist, value1, **config):
         super(PluginsOfPlugins, self).__init__(name, dist, **config)
@@ -108,11 +87,7 @@ class UserPlugin(plugin.Plugin):
 
 
 class LdapPlugin(plugin.Plugin):
-    CONFIG_SPEC = dict(
-        plugin.Plugin.CONFIG_SPEC,
-        host='string',
-        port='integer'
-    )
+    CONFIG_SPEC = dict(plugin.Plugin.CONFIG_SPEC, host='string', port='integer')
 
     def __init__(self, name, dist, host, port):
         super(LdapPlugin, self).__init__(name, dist, host=host, port=port)
@@ -120,6 +95,7 @@ class LdapPlugin(plugin.Plugin):
         self.dist = dist
         self.host = host
         self.port = port
+
 
 # --------------------------------------------------------------------------------------------------------------------
 
@@ -176,11 +152,15 @@ def test_load1():
     assert plugin2_name == 'test2'
     assert plugin2.name == 'test2'
     assert plugin2.dist.project_name == 'nagare-services'
-    assert plugin2.plugin_config == {'activated': True, 'value1': 10, 'value2': '/tmp/test/b.txt', 'value3': 'Hello world!'}
+    assert plugin2.plugin_config == {
+        'activated': True,
+        'value1': 10,
+        'value2': '/tmp/test/b.txt',
+        'value3': 'Hello world!',
+    }
 
 
 def test_load2():
-
     class Plugins(DummyPlugins):
         ENTRY_POINTS = 'nagare.plugins.test1'
 
@@ -198,11 +178,15 @@ def test_load2():
     assert plugin2_name == 'test2'
     assert plugin2.name == 'test2'
     assert plugin2.dist.project_name == 'nagare-services'
-    assert plugin2.plugin_config == {'activated': True, 'value1': 10, 'value2': '/tmp/test/b.txt', 'value3': 'Hello world!'}
+    assert plugin2.plugin_config == {
+        'activated': True,
+        'value1': 10,
+        'value2': '/tmp/test/b.txt',
+        'value3': 'Hello world!',
+    }
 
 
 def test_load3():
-
     class Plugins(DummyPlugins):
         ENTRY_POINTS = 'nagare.plugins.test3'
 

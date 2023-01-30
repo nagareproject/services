@@ -1,7 +1,7 @@
 # Encoding: utf-8
 
 # --
-# Copyright (c) 2008-2022 Net-ng.
+# Copyright (c) 2008-2023 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -9,10 +9,9 @@
 # this distribution.
 # --
 
-import pytest
-
 from nagare.services.exceptions import MissingService
 from nagare.services.services import Services as Dependencies
+import pytest
 
 
 def test_dependencies_injection_to_lambdas():
@@ -27,7 +26,7 @@ def test_dependencies_injection_to_lambdas():
 
 def test_dependencies_injection_to_functions():
     dependencies = Dependencies()
-    dependencies.update(dict(c=42, other=10))
+    dependencies.update({'c': 42, 'other': 10})
 
     def f1(a, b, c):
         return a + b + c
@@ -49,7 +48,7 @@ def test_dependencies_injection_to_functions():
 
 def test_dependencies_injection_with_decorator():
     dependencies1 = Dependencies()
-    dependencies1.update(dict(c=42, other=10))
+    dependencies1.update({'c': 42, 'other': 10})
     dependencies2 = Dependencies()
     dependencies2['c'] = 43
 
