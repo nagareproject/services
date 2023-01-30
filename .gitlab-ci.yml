@@ -11,7 +11,7 @@
 
 tests:
   script:
-    - pip3 install ruff black
+    - pip3 install ruff black pytest
     - ruff src
     - black src
     - pytest
