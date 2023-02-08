@@ -22,7 +22,6 @@ except ImportError:
 warnings.filterwarnings('ignore', module='_distutils')
 
 try:
-
     from importlib.metadata import distribution
 
     def get_editable_project_location(dist):
@@ -36,7 +35,6 @@ try:
         return location
 
 except ImportError:
-
     try:
         from pip._internal.metadata import pkg_resources
 

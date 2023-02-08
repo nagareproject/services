@@ -99,6 +99,15 @@ class SelectionPlugin(PluginsPlugin):
 
         return name, dict(cls.CONFIG_SPEC, **spec), children
 
+    @classmethod
+    def _walk(cls, plugin, name, entry_points, config, global_config, activated_by_default, get_children):
+        selector = plugin.SELECTOR
+        config[selector] = config_from_dict({selector: config[selector]}).interpolate(global_config)[selector]
+
+        return super(SelectionPlugin, cls)._walk(
+            plugin, name, entry_points, config, global_config, activated_by_default, get_children
+        )
+
     @property
     def plugin(self):
         return list(self.values())[0]
