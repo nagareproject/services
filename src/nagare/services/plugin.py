@@ -102,7 +102,9 @@ class SelectionPlugin(PluginsPlugin):
     @classmethod
     def _walk(cls, plugin, name, entry_points, config, global_config, activated_by_default, get_children):
         selector = plugin.SELECTOR
-        config[selector] = config_from_dict({selector: config[selector]}).interpolate(global_config)[selector]
+        selector_value = config.get(selector)
+        if selector_value is not None:
+            config[selector] = config_from_dict({selector: selector_value}).interpolate(global_config)[selector]
 
         return super(SelectionPlugin, cls)._walk(
             plugin, name, entry_points, config, global_config, activated_by_default, get_children
