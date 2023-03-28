@@ -25,12 +25,13 @@ try:
     from importlib.metadata import distribution
 
     def get_editable_project_location(dist):
+        location = None
+
         content = distribution(dist.project_name).read_text('direct_url.json')
-        if content is None:
-            location = None
-        else:
-            url = json.loads(content)['url']
-            location = urlparse.urlsplit(url)[2]
+        if content is not None:
+            direct_url_info = json.loads(content)
+            if direct_url_info.get('dir_info', {}).get('editable', False):
+                location = urlparse.urlsplit(direct_url_info['url'])[2]
 
         return location
 
