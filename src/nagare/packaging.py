@@ -9,48 +9,19 @@
 # this distribution.
 # --
 
-import distutils  # noqa: F401
+from importlib.metadata import distribution
 import json
-import logging
-import warnings
-
-try:
-    import urlparse
-except ImportError:
-    import urllib.parse as urlparse
-
-warnings.filterwarnings('ignore', module='_distutils')
-
-try:
-    from importlib.metadata import distribution
-
-    def get_editable_project_location(dist):
-        location = None
-
-        content = distribution(dist.project_name).read_text('direct_url.json')
-        if content is not None:
-            direct_url_info = json.loads(content)
-            if direct_url_info.get('dir_info', {}).get('editable', False):
-                location = urlparse.urlsplit(direct_url_info['url'])[2]
-
-        return location
-
-except ImportError:
-    try:
-        from pip._internal.metadata import pkg_resources
-
-        logging.getLogger('pip._internal.utils.packaging').setLevel('ERROR')
-        logging.getLogger('pip._internal.metadata.pkg_resources').setLevel('ERROR')
-
-        def get_editable_project_location(dist):
-            return getattr(pkg_resources.Distribution(dist), 'editable_project_location', None)
-
-    except ImportError:
-
-        def get_editable_project_location(dist):
-            return None
+import urllib.parse as urlparse
 
 
 def Distribution(dist):
-    dist.editable_project_location = get_editable_project_location(dist)
+    location = None
+    content = distribution(dist.metadata['name']).read_text('direct_url.json')
+    if content is not None:
+        direct_url_info = json.loads(content)
+        if direct_url_info.get('dir_info', {}).get('editable', False):
+            location = urlparse.urlsplit(direct_url_info['url'])[2]
+
+    dist.editable_project_location = location
+
     return dist

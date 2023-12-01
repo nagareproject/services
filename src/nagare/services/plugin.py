@@ -73,14 +73,15 @@ class SelectionPlugin(PluginsPlugin):
         if not config:
             return []
 
-        entries = dict(PluginsPlugin.iter_entry_points(name, entry_points, config))
+        entries = {
+            name: (dist, entry) for dist, name, entry in PluginsPlugin.iter_entry_points(name, entry_points, config)
+        }
 
         selector = config.get(cls.SELECTOR)
         if not selector:
             raise ParameterError('required', sections=[name], name=cls.SELECTOR)
 
-        entry = entries.get(selector)
-        if not entry:
+        if selector not in entries:
             choices = list(map("'{}'".format, entries))
             error = "invalid value '{}', ".format(selector)
             if choices:
@@ -90,7 +91,8 @@ class SelectionPlugin(PluginsPlugin):
 
             raise ParameterError(error, sections=[name], name=cls.SELECTOR)
 
-        return [(name, entry)]
+        dist, entry = entries[selector]
+        return [(dist, name, entry)]
 
     @staticmethod
     def get_plugin_spec(entry, name, cls, plugin, children):

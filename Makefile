@@ -15,7 +15,7 @@ install-dev: clean
 	python -m pre_commit autoupdate
 
 tests:
-	python -m pytest
+	python -m pytest src
 
 qa:
 	python -m ruff src

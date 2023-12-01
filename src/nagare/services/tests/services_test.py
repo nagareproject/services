@@ -9,22 +9,21 @@
 # this distribution.
 # --
 
+from importlib import metadata
 import os
+import pathlib
 
 from nagare.config import config_from_file
 from nagare.services import exceptions, plugin, services
-import pkg_resources
 import pytest
 
 
 class DummyServices(services.Services):
     @classmethod
     def iter_entry_points(cls, name, entry_points, config):
-        if not entry_points:
-            return []
+        dist = metadata.PathDistribution(pathlib.Path(__file__).parent)
 
-        egg_path = os.path.join(os.path.dirname(__file__), 'entry_points')
-        return [(entry.name, entry) for entry in pkg_resources.WorkingSet([egg_path]).iter_entry_points(entry_points)]
+        return super().iter_entry_points(name, entry_points, config, [dist])
 
 
 class DummyService1(plugin.Plugin):
@@ -92,13 +91,13 @@ def test_load_service1():
 
     assert service1_name == 'service1'
     assert service1.name == 'service1'
-    assert service1.dist.project_name == 'nagare-services'
+    assert service1.dist.metadata['name'] == 'nagare-services'
     assert service1.value1 == 10
     assert service1.value2 == '/tmp/test/a.txt'
 
     assert service2_name == 'service2'
     assert service2.name == 'service2'
-    assert service2.dist.project_name == 'nagare-services'
+    assert service2.dist.metadata['name'] == 'nagare-services'
     assert service2.value1 == 20
     assert service2.value2 == '/tmp/test/b.txt'
 
@@ -126,13 +125,13 @@ def test_injection_of_service():
 
     assert service1_name == 'service1'
     assert service1.name == 'service1'
-    assert service1.dist.project_name == 'nagare-services'
+    assert service1.dist.metadata['name'] == 'nagare-services'
     assert service1.value1 == 10
     assert service1.value2 == '/tmp/test/a.txt'
 
     assert service2_name == 'service2'
     assert service2.name == 'service2'
-    assert service2.dist.project_name == 'nagare-services'
+    assert service2.dist.metadata['name'] == 'nagare-services'
     assert service2.value1 == 20
     assert service2.value2 == '/tmp/test/b.txt'
 

@@ -51,7 +51,7 @@ universal = true
 
 [tool.ruff]
 select = ['C4', 'COM', 'D', 'E', 'ERA', 'F', 'I', 'ISC', 'INP', 'PIE', 'Q', 'S', 'SIM', 'TID', 'W', 'YTT']
-ignore = ['COM812', 'D10']
+ignore = ['COM812', 'D10', 'ISC001']
 line-length = 120
 src = ['src']
 

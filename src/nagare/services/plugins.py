@@ -14,10 +14,10 @@ The plugins are read from an entry point and configured from a file
 """
 
 from collections import OrderedDict
+from importlib import metadata
 
 from nagare.config import config_from_dict
 from nagare.packaging import Distribution
-import pkg_resources
 
 from .reporters import PluginsReporter
 
@@ -36,7 +36,7 @@ class Plugins(object):
         self.plugins = OrderedDict()
 
     @staticmethod
-    def load_order(name, entry, plugin):
+    def load_order(dist, name, entry, plugin):
         """Get the loading order of a plugin.
 
         In:
@@ -49,7 +49,7 @@ class Plugins(object):
         return (plugin.LOAD_PRIORITY, name)
 
     @classmethod
-    def iter_entry_points(cls, name, entry_points, config):
+    def iter_entry_points(cls, name, entry_points, config, distributions=()):
         """Read the entry points.
 
         In:
@@ -58,32 +58,42 @@ class Plugins(object):
         Return:
           - the entry points
         """
-        return [(entry.name, entry) for entry in pkg_resources.iter_entry_points(entry_points)] if entry_points else []
+        if not entry_points:
+            return []
+
+        if not distributions:
+            distributions = {dist.metadata['name']: dist for dist in metadata.distributions()}.values()
+
+        return [
+            (dist, entry.name, entry)
+            for dist in distributions
+            for entry in dist.entry_points
+            if entry.group == entry_points
+        ]
 
     @classmethod
     def iter_activated_entry_points(cls, name, entry_points, config, global_config, activated_by_default):
-        spec = config_from_dict({'activated': 'boolean(default={})'.format(activated_by_default)})
-
         entries = []
 
-        for plugin_name, entry in cls.iter_entry_points(name, entry_points, config):
-            conf = {'activated': config.get(plugin_name, {}).get('activated', str(activated_by_default))}
+        for dist, plugin_name, entry in cls.iter_entry_points(name, entry_points, config):
+            spec = config_from_dict({plugin_name: {'activated': 'boolean(default={})'.format(activated_by_default)}})
+            conf = {plugin_name: {'activated': config.get(plugin_name, {}).get('activated', str(activated_by_default))}}
             conf = config_from_dict(conf).interpolate(global_config).validate(spec)
 
-            if conf['activated']:
-                entries.append((plugin_name, entry))
+            if conf[plugin_name]['activated']:
+                entries.append((dist, plugin_name, entry))
 
         return entries
 
     @classmethod
     def load_entry_points(cls, entry_points, config):
-        all_plugins = [(name, entry, entry.load()) for name, entry in entry_points]
+        all_plugins = [(dist, name, entry, entry.load()) for dist, name, entry in entry_points]
         all_plugins.sort(key=lambda plugin: cls.load_order(*plugin))
 
         plugins = OrderedDict()
-        for name, entry, plugin in all_plugins:
+        for dist, name, entry, plugin in all_plugins:
             plugins.pop(name, None)
-            plugins[name] = (name, entry, plugin)
+            plugins[name] = (dist, name, entry, plugin)
 
         return list(plugins.values())
 
@@ -108,13 +118,13 @@ class Plugins(object):
           - ``initial_config`` -- other configuration parameters not read from the configuration file
         """
         config = config or {}
-        if type(config) is dict:
+        if type(config) is dict:  # noqa: E721
             config = config_from_dict(config)
 
         entry_points = entry_points or self.ENTRY_POINTS
         entries = self.iter_activated_entry_points(name, entry_points, config, global_config, self.activated_by_default)
 
-        activated_sections = {e[0] for e in entries}
+        activated_sections = {e[1] for e in entries}
         config.sections = {name: section for name, section in config.sections.items() if name in activated_sections}
 
         if validate:
@@ -135,14 +145,13 @@ class Plugins(object):
             config.merge_defaults(spec)
             config.interpolate(global_config).validate(spec)
 
-        if type(config) is not dict:
+        if type(config) is not dict:  # noqa: E721
             config = config.dict()
 
         plugins = self.load_entry_points(entries, config)
-        for name, entry, plugin in plugins:
+        for dist, name, entry, plugin in plugins:
             try:
-                dist = entry.dist
-                dist.location = Distribution(dist).editable_project_location or dist.location
+                dist.location = Distribution(dist).editable_project_location or dist.locate_file('')
 
                 plugin_config = config.get(name, {})
                 plugin_instance = self._load_plugin(name, dist, plugin, **plugin_config)
@@ -160,18 +169,21 @@ class Plugins(object):
         if activated_by_default is None:
             activated_entries = all_entries
         else:
-            spec = config_from_dict({'activated': 'boolean(default={})'.format(activated_by_default)})
-
             activated_entries = []
 
-            for plugin_name, entry in all_entries:
-                conf = {'activated': config.get(plugin_name, {}).get('activated', str(activated_by_default))}
+            for dist, plugin_name, entry in all_entries:
+                spec = config_from_dict(
+                    {plugin_name: {'activated': 'boolean(default={})'.format(activated_by_default)}}
+                )
+                conf = {
+                    plugin_name: {'activated': config.get(plugin_name, {}).get('activated', str(activated_by_default))}
+                }
                 conf = config_from_dict(conf).interpolate(global_config).validate(spec)
 
-                if conf['activated']:
-                    activated_entries.append((plugin_name, entry))
+                if conf[plugin_name]['activated']:
+                    activated_entries.append((dist, plugin_name, entry))
 
-        for name, entry, cls in o.load_entry_points(activated_entries, config):
+        for dist, name, entry, cls in o.load_entry_points(activated_entries, config):
             plugin = get_children(o, name, cls)
 
             if hasattr(plugin, '_walk'):

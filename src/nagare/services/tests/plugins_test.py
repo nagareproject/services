@@ -9,11 +9,12 @@
 # this distribution.
 # --
 
+from importlib import metadata
 import os
+import pathlib
 
 from nagare.config import config_from_dict, config_from_file
 from nagare.services import plugin, plugins
-import pkg_resources
 
 CONFIG = config_from_dict(
     {'my_plugins': {'test1': {'value1': '20', 'value2': '$root/a.txt'}, 'test2': {'value3': '$greeting world!'}}}
@@ -25,11 +26,9 @@ class DummyPlugins(plugins.Plugins):
 
     @classmethod
     def iter_entry_points(cls, name, entry_points, config):
-        if not entry_points:
-            return []
+        dist = metadata.PathDistribution(pathlib.Path(__file__).parent)
 
-        egg_path = os.path.join(os.path.dirname(__file__), 'entry_points')
-        return [(entry.name, entry) for entry in pkg_resources.WorkingSet([egg_path]).iter_entry_points(entry_points)]
+        return super().iter_entry_points(name, entry_points, config, [dist])
 
 
 class DummyPlugin1(plugin.Plugin):
@@ -71,11 +70,9 @@ class PluginsOfPlugins(plugin.PluginsPlugin):
 
     @classmethod
     def iter_entry_points(cls, name, entry_points, config):
-        if not entry_points:
-            return []
+        dist = metadata.PathDistribution(pathlib.Path(__file__).parent)
 
-        egg_path = os.path.join(os.path.dirname(__file__), 'entry_points')
-        return [(entry.name, entry) for entry in pkg_resources.WorkingSet([egg_path]).iter_entry_points(entry_points)]
+        return super().iter_entry_points(name, entry_points, config, [dist])
 
 
 class UserPlugin(plugin.Plugin):
@@ -106,7 +103,7 @@ def test_discover_plugin1():
     entries = repository.iter_entry_points(None, repository.ENTRY_POINTS, {})
     assert len(entries) == 2
 
-    plugins = [(name, cls) for name, entry, cls in repository.load_entry_points(entries, {})]
+    plugins = [(name, cls) for dist, name, entry, cls in repository.load_entry_points(entries, {})]
     ((test_name1, test_plugin1), (test_name2, test_plugin2)) = plugins
 
     assert test_name1 == 'test1'
@@ -121,7 +118,7 @@ def test_load_priority():
     entries = repository.iter_entry_points(None, repository.ENTRY_POINTS, {})
     assert len(entries) == 2
 
-    plugins = [name for name, entry, cls in repository.load_entry_points(entries, {})]
+    plugins = [name for dist, name, entry, cls in repository.load_entry_points(entries, {})]
 
     assert plugins == ['test1', 'test2']
 
@@ -133,7 +130,7 @@ def test_load_priority():
     entries = repository.iter_entry_points(None, repository.ENTRY_POINTS, {})
     assert len(entries) == 2
 
-    plugins = [name for name, entry, cls in repository.load_entry_points(entries, {})]
+    plugins = [name for dist, name, entry, cls in repository.load_entry_points(entries, {})]
 
     assert plugins == ['test1', 'test2']
 
@@ -146,12 +143,12 @@ def test_load1():
     (plugin1_name, plugin1), (plugin2_name, plugin2) = repository.items()
 
     assert plugin1_name == 'test1'
-    assert plugin1.dist.project_name == 'nagare-services'
+    assert plugin1.dist.metadata['name'] == 'nagare-services'
     assert plugin1.plugin_config == {'activated': True, 'value1': 20, 'value2': '/tmp/test/a.txt'}
 
     assert plugin2_name == 'test2'
     assert plugin2.name == 'test2'
-    assert plugin2.dist.project_name == 'nagare-services'
+    assert plugin2.dist.metadata['name'] == 'nagare-services'
     assert plugin2.plugin_config == {
         'activated': True,
         'value1': 10,
@@ -172,12 +169,12 @@ def test_load2():
     (plugin1_name, plugin1), (plugin2_name, plugin2) = repository.items()
 
     assert plugin1_name == 'test1'
-    assert plugin1.dist.project_name == 'nagare-services'
+    assert plugin1.dist.metadata['name'] == 'nagare-services'
     assert plugin1.plugin_config == {'activated': True, 'value1': 20, 'value2': '/tmp/test/a.txt'}
 
     assert plugin2_name == 'test2'
     assert plugin2.name == 'test2'
-    assert plugin2.dist.project_name == 'nagare-services'
+    assert plugin2.dist.metadata['name'] == 'nagare-services'
     assert plugin2.plugin_config == {
         'activated': True,
         'value1': 10,
@@ -199,16 +196,16 @@ def test_load3():
 
     assert name == 'authentication'
     assert plugins_of_plugins.name == 'authentication'
-    assert plugins_of_plugins.dist.project_name == 'nagare-services'
+    assert plugins_of_plugins.dist.metadata['name'] == 'nagare-services'
     assert plugins_of_plugins.value1 == 20
 
     ldap = plugins_of_plugins['ldap']
     assert ldap.name == 'ldap'
-    assert ldap.dist.project_name == 'nagare-services'
+    assert ldap.dist.metadata['name'] == 'nagare-services'
     assert ldap.host == 'localhost'
     assert ldap.port == 389
 
     users = plugins_of_plugins['user']
     assert users.name == 'user'
-    assert users.dist.project_name == 'nagare-services'
+    assert users.dist.metadata['name'] == 'nagare-services'
     assert users.default_user == 'John Doe <admin@localhost>'

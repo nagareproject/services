@@ -30,9 +30,7 @@ class Reporter(object):
             padding = max(len(extract(*args)) for args in to_report)
             column.append(max((padding, len(label))))
 
-        labels = [
-            (label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns
-        ]  # noqa: F812
+        labels = [(label.ljust if left else label.rjust)(padding) for label, extract, left, padding in columns]  # noqa: F812
         display((' ' * indent) + ' '.join(labels))
         labels = ['-' * padding for label, extract, left, padding in columns]
         display((' ' * indent) + ' '.join(labels))
@@ -56,9 +54,13 @@ class Reporter(object):
 
 class PackagesReporter(Reporter):
     COLUMNS = (
-        ('Package', lambda dist, *args: dist.project_name, True),
-        ('Version', lambda dist, *args: dist.version, True),
-        ('Location', lambda dist, *args: Distribution(dist).editable_project_location or dist.location, True),
+        ('Package', lambda dist, *args: dist.metadata['name'], True),
+        ('Version', lambda dist, *args: dist.metadata['version'], True),
+        (
+            'Location',
+            lambda dist, *args: Distribution(dist).editable_project_location or str(dist.locate_file('')),
+            True,
+        ),
     )
 
     def __init__(self, columns=None):
