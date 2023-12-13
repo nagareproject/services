@@ -13,8 +13,8 @@
 The plugins are read from an entry point and configured from a file
 """
 
-from collections import OrderedDict
 from importlib import metadata
+from collections import OrderedDict
 
 from nagare.config import config_from_dict
 from nagare.packaging import Distribution
@@ -151,7 +151,7 @@ class Plugins(object):
         plugins = self.load_entry_points(entries, config)
         for dist, name, entry, plugin in plugins:
             try:
-                dist.location = Distribution(dist).editable_project_location or dist.locate_file('')
+                dist.location = Distribution(dist).editable_project_location or str(dist.locate_file(''))
 
                 plugin_config = config.get(name, {})
                 plugin_instance = self._load_plugin(name, dist, plugin, **plugin_config)
