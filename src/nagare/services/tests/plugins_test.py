@@ -9,9 +9,9 @@
 # this distribution.
 # --
 
-from importlib import metadata
 import os
 import pathlib
+from importlib import metadata
 
 from nagare.config import config_from_dict, config_from_file
 from nagare.services import plugin, plugins

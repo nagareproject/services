@@ -9,9 +9,9 @@
 # this distribution.
 # --
 
-from nagare.services.exceptions import MissingService
-from nagare.services.services import Services as Dependencies
 import pytest
+from nagare.services.services import Services as Dependencies
+from nagare.services.exceptions import MissingService
 
 
 def test_dependencies_injection_to_lambdas():

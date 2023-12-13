@@ -10,8 +10,8 @@
 # --
 
 """Services registry."""
-import functools
 import inspect
+import functools
 
 try:
     from inspect import Parameter, signature
@@ -26,7 +26,7 @@ except ImportError:
 
     PY_VERSION = 2
 
-from . import exceptions, plugins
+from . import plugins, exceptions
 
 
 class Services(plugins.Plugins):

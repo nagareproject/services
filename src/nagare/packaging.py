@@ -9,9 +9,9 @@
 # this distribution.
 # --
 
-from importlib.metadata import distribution
 import json
 import urllib.parse as urlparse
+from importlib.metadata import distribution
 
 
 def Distribution(dist):

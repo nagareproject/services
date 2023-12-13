@@ -9,13 +9,13 @@
 # this distribution.
 # --
 
-from importlib import metadata
 import os
 import pathlib
+from importlib import metadata
 
-from nagare.config import config_from_file
-from nagare.services import exceptions, plugin, services
 import pytest
+from nagare.config import config_from_file
+from nagare.services import plugin, services, exceptions
 
 
 class DummyServices(services.Services):
