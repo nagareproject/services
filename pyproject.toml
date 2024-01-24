@@ -1,5 +1,5 @@
 # =-
-# (C)opyright Net-ng 2023
+# (C)opyright Net-ng 2008-2024
 #
 # This is Net-ng proprietary source code
 # Any reproduction modification or use without prior written
@@ -45,9 +45,6 @@ Documentation = 'https://nagare.org/doc'
 Source = 'https://github.com/nagareproject/services'
 Tracker = 'https://github.com/nagareproject/services/issues'
 
-[tool.distutils.bdist_wheel]
-universal = true
-
 [tool.ruff]
 select = ['C4', 'COM', 'D', 'E', 'ERA', 'F', 'I', 'ISC', 'INP', 'PIE', 'Q', 'S', 'SIM', 'TID', 'W', 'YTT']
 ignore = ['COM812', 'D10', 'ISC001']
@@ -55,17 +52,15 @@ line-length = 120
 src = ['src']
 
 [tool.ruff.per-file-ignores]
-'src/nagare/services/tests/*' = ['S']
+'*_test.py' = ['S101', 'S108']
 
 [tool.ruff.flake8-quotes]
 inline-quotes = 'single'
-multiline-quotes = 'double'
 
 [tool.ruff.pydocstyle]
 convention = 'google'
 
 [tool.ruff.isort]
-known-third-party = ['nagare']
 length-sort = true
 
 [tool.ruff.format]

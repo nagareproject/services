@@ -1,7 +1,7 @@
 # Encoding: utf-8
 
 # --
-# Copyright (c) 2008-2023 Net-ng.
+# Copyright (c) 2008-2024 Net-ng.
 # All rights reserved.
 #
 # This software is licensed under the BSD License, as described in
@@ -14,6 +14,7 @@ import pathlib
 from importlib import metadata
 
 import pytest
+
 from nagare.config import config_from_file
 from nagare.services import plugin, services, exceptions
 
