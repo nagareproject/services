@@ -212,7 +212,9 @@ class Plugins(object):
         )
 
     def walk2(self, name):
-        return self._walk(self, name, self.ENTRY_POINTS, {}, {}, None, lambda o, name, plugin: o.get(name))
+        return self._walk(
+            self, name, self.ENTRY_POINTS, {}, {}, None, lambda o, name, plugin: o.get(name.replace('.', '_'))
+        )
 
     def report(self, name, title='Plugins', activated_columns=None, criterias=lambda *args: True):
         def extract_infos(plugins, added, level, ancestors):
